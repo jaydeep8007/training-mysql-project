@@ -9,9 +9,20 @@ import { resCode } from "../constants/resCode";
 import crypto from "crypto";
 import { generateResetToken } from "../services/password.service";
 import { ValidationError } from 'sequelize';
+import { employeeCreateSchema } from "../validations/employee.validation";
+import { customerValidations } from "../validations/customer.validation";
+
 
 const signupCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // ✅ Zod validation using your schema
+    const parsed = customerValidations.customerCreateSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      const errors = parsed.error.errors.map((err) => `${err.path[0]}: ${err.message}`);
+      return responseHandler.error(res, errors.join(", "), resCode.BAD_REQUEST);
+    }
+
     const {
       cus_firstname,
       cus_lastname,
@@ -19,42 +30,30 @@ const signupCustomer = async (req: Request, res: Response, next: NextFunction) =
       cus_phone_number,
       cus_password,
       cus_confirm_password,
-    } = req.body;
+    } = parsed.data;
 
-    // Validate required fields
-    if (
-      !cus_firstname ||
-      !cus_lastname ||
-      !cus_email ||
-      !cus_phone_number ||
-      !cus_password ||
-      !cus_confirm_password
-    ) {
-      return responseHandler.error(res, "All fields are required", resCode.BAD_REQUEST);
-    }
-
+    // ✅ Check password match after Zod validates individual fields
     if (cus_password !== cus_confirm_password) {
       return responseHandler.error(res, "Passwords do not match", resCode.BAD_REQUEST);
     }
 
-    // Check if email or phone already exists
 
-    // Hash password
+    // ✅ Hash password
     const hashedPassword = await hashPassword(cus_password);
 
-    // Create customer
+    // ✅ Create customer (confirm password not stored)
     const newCustomer = await customerModel.create({
       cus_firstname,
       cus_lastname,
       cus_email,
       cus_phone_number,
       cus_password: hashedPassword,
-      cus_confirm_password,
+      cus_status: "active", // default
     });
 
     const customerData = newCustomer.get();
 
-    // Generate tokens
+    // ✅ Generate tokens
     const token = authToken.generateAuthToken({
       user_id: customerData.cus_id,
       email: customerData.cus_email,
@@ -65,36 +64,129 @@ const signupCustomer = async (req: Request, res: Response, next: NextFunction) =
       email: customerData.cus_email,
     });
 
-    // Store tokens in customer_auth
+    // ✅ Store tokens in auth table
     await customerAuthModel.create({
       cus_id: customerData.cus_id,
       cus_auth_token: token,
       cus_refresh_auth_token: refreshToken,
     });
 
+
     return responseHandler.success(
       res,
-      "Signup successful",
-      { token, refreshToken, customer: customerData },
+      "Customer created and signed up successfully",
+      {
+        customer: customerData,
+        token,
+        refreshToken,
+      },
       resCode.CREATED
     );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
 
-    // For other unhandled errors
     return next(error);
   }
 };
+
+ 
+// const signupCustomer = async (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     const {
+//       cus_firstname,
+//       cus_lastname,
+//       cus_email,
+//       cus_phone_number,
+//       cus_password,
+//       cus_confirm_password,
+//     } = req.body;
+
+//     // Validate required fields
+//     if (
+//       !cus_firstname ||
+//       !cus_lastname ||
+//       !cus_email ||
+//       !cus_phone_number ||
+//       !cus_password ||
+//       !cus_confirm_password
+//     ) {
+//       return responseHandler.error(res, "All fields are required", resCode.BAD_REQUEST);
+//     }
+
+//     if (cus_password !== cus_confirm_password) {
+//       return responseHandler.error(res, "Passwords do not match", resCode.BAD_REQUEST);
+//     }
+
+//     // Check if email or phone already exists
+
+//     // Hash password
+//     const hashedPassword = await hashPassword(cus_password);
+
+//     // Create customer
+//     const newCustomer = await customerModel.create({
+//       cus_firstname,
+//       cus_lastname,
+//       cus_email,
+//       cus_phone_number,
+//       cus_password: hashedPassword,
+//       cus_status: "active", // Default status
+//     });
+
+//     const customerData = newCustomer.get();
+
+//     // Generate tokens
+//     const token = authToken.generateAuthToken({
+//       user_id: customerData.cus_id,
+//       email: customerData.cus_email,
+//     });
+
+//     const refreshToken = authToken.generateRefreshAuthToken({
+//       user_id: customerData.cus_id,
+//       email: customerData.cus_email,
+//     });
+
+//     // Store tokens in customer_auth
+//     await customerAuthModel.create({
+//       cus_id: customerData.cus_id,
+//       cus_auth_token: token,
+//       cus_refresh_auth_token: refreshToken,
+//     });
+
+//     return responseHandler.success(
+//       res,
+//       "Signup successful",
+//       { token, refreshToken, customer: customerData },
+//       resCode.CREATED
+//     );
+//   } catch (error) {
+//     // ✅ Handle Sequelize validation errors
+//     if (error instanceof ValidationError) {
+//       const messages = error.errors.map((err) => err.message);
+//       return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
+//     }
+
+//     // For other unhandled errors
+//     return next(error);
+//   }
+// };
 
 
 
 const signinCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { cus_email, cus_password } = req.body;
+
+      // ✅ Validate input with Zod
+    const parsed = customerValidations.customerLoginSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      const errors = parsed.error.errors.map(err => `${err.path[0]}: ${err.message}`);
+      return responseHandler.error(res, errors.join(", "), resCode.BAD_REQUEST);
+    }
+
+    const { cus_email, cus_password } = parsed.data;
 
     // Validate input
     if (!cus_email || !cus_password) {
@@ -107,6 +199,7 @@ const signinCustomer = async (req: Request, res: Response, next: NextFunction) =
 
     // Find customer by email
     const customer = await customerModel.findOne({ where: { cus_email } });
+    console.log("Customer found:", customer);
 
     if (!customer) {
       return responseHandler.error(
@@ -206,6 +299,7 @@ const signinCustomer = async (req: Request, res: Response, next: NextFunction) =
 //     return next(error);
 //   }
 // };
+
 
 
 const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {

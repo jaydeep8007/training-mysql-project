@@ -8,9 +8,10 @@ interface CustomerAttributes {
   cus_email: string;
   cus_phone_number: string;
   cus_password: string;
-  cus_confirm_password?: string;
+
   reset_password_token?: string | null;
   reset_password_expires?: Date | null;
+  cus_status: "active" | "inactive" | "restricted" | "blocked";
 }
 
 type CustomerCreationAttributes = Optional<CustomerAttributes, "cus_id">;
@@ -25,9 +26,9 @@ class Customer
   public cus_email!: string;
   public cus_phone_number!: string;
   public cus_password!: string;
-  public cus_confirm_password?: string;
   public reset_password_token?: string | null;
   public reset_password_expires?: Date | null;
+  public cus_status!: "active" | "inactive" | "restricted" | "blocked";
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -36,9 +37,9 @@ class Customer
 Customer.init(
   {
     cus_id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+ type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
     },
     cus_firstname: {
       type: DataTypes.STRING,
@@ -101,23 +102,13 @@ Customer.init(
         },
       },
     },
-    cus_confirm_password: {
-      type: DataTypes.VIRTUAL,
-      allowNull: false,
-      validate: {
-        notEmpty: {
-          msg: "Confirm password is required",
-        },
-      },
-    },
-    reset_password_token: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    reset_password_expires: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
+    cus_status: {
+    type: DataTypes.ENUM('active', 'inactive', 'restricted', 'blocked'),
+    allowNull: false,
+    defaultValue: 'active',
+  },
+    //add status enum active inactive restricted blocked
+  
   },
   {
     sequelize,

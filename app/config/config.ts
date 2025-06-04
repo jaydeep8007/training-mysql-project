@@ -15,12 +15,12 @@ var config: any = {
     },
     development: {
         database: {
-            DB_NAME: "mydbdemo",
+            DB_NAME: "training-mysql-project",
             DB_USERNAME: "root",
             DB_PASSWORD: "Admin@123",
             DB_HOST: "localhost",
             DIALECT: "mysql",
-            LOGGING: true
+            LOGGING: false
         },
         SECURITY_TOKEN: 'Fuse2ServerSecurityKey',
         SERVER_PORT: '3000',

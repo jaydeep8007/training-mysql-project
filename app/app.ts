@@ -13,9 +13,6 @@ import cookieParser from "cookie-parser";
 //db connections
 import sequelize from "./config/sequelize";
 
-
-const config = get(process.env.NODE_ENV);
-
 /* MAIN ROUTES */
 import router from "./routes/main.route";
 
@@ -35,7 +32,6 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bo
 app.use(express.json());
 app.use(logger("dev"));
 
-
 app.use(
   bodyParser.urlencoded({
     extended: false,
@@ -45,7 +41,7 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cors());
-// app.use(logger('combined')); // Just uncomment this line to show logs.
+app.use(logger("combined")); // Just uncomment this line to show logs.
 
 /* =======   Settings for CORS ========== */
 app.use((req: any, res: any, next: any) => {
@@ -66,23 +62,40 @@ function haltOnTimedout(req: any, res: any, next: any) {
 
 /* MAIN ROUTES FOR APP */
 app.use("/api/v1", router);
+
 // Server Start
 const PORT = process.env.PORT || 3000;
 /* REQUIRE DATABASE CONNECTION */
 
-
 /* CONNECT DATABASE AND START THE SERVER */
-app.listen(PORT, async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Database connection has been established successfully.');
+// app.listen(PORT, async () => {
+//     try {
+//         await sequelize.authenticate();
+//         console.log('Database connection has been established successfully.');
 
-        /* SYNC THE MODELS (create tables if they don't exist) */
-        await sequelize.sync({ alter: true })
-  .then(() => console.log("Database synced"))
-  .catch(err => console.error("Sync error:", err));; // Use { force: true } to drop and recreate tables
-    } catch (error) {
-        console.error('Unable to connect to the database:', error);
-    }
-    console.log("App is listing on port " + PORT + " for Fuse2 node server")
+//         /* SYNC THE MODELS (create tables if they don't exist) */
+//         await sequelize.sync({ alter: true })
+//   .then(() => console.log("Database synced"))
+//   .catch(err => console.error("Sync error:", err));; // Use { force: true } to drop and recreate tables
+//     } catch (error) {
+//         console.error('Unable to connect to the database:', error);
+//     }
+//     console.log("App is listing on port " + PORT + " for Fuse2 node server")
+// });
+
+import models from "./models/index"; // Import your models with associations
+
+app.listen(PORT, async () => {
+  try {
+    await models.sequelize.authenticate();
+    console.log("✅ Database connection has been established successfully.");
+
+    // Sync all models and associations
+    await models.sequelize.sync({ alter: true });
+    console.log("✅ Database synced successfully.");
+  } catch (error) {
+    console.error("❌ Unable to connect to the database or sync:", error);
+  }
+
+  console.log(`🚀 App is listening on port ${PORT} for demo Node server`);
 });
