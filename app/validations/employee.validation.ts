@@ -6,9 +6,10 @@ export const employeeCreateSchema = z.object({
     .min(2, "Employee name must be at least 2 characters")
     .max(100, "Employee name must be at most 100 characters"),
 
-  emp_email: z
-    .string()
-    .email("Invalid email address")
+emp_email: z
+  .string()
+  .email("Invalid email address")
+  .transform(email => email.toLowerCase())
 ,
 
   emp_password: z
@@ -17,7 +18,33 @@ export const employeeCreateSchema = z.object({
     .regex(
       /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+]).+$/,
       "Password must include uppercase, lowercase, number, and special character"
-    ),
+    )
+    .superRefine((val, ctx) => {
+    if (!/[A-Z]/.test(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must contain at least one uppercase letter",
+      });
+    }
+    if (!/[a-z]/.test(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must contain at least one lowercase letter",
+      });
+    }
+    if (!/\d/.test(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must contain at least one number",
+      });
+    }
+    if (!/[!@#$%^&*()_+]/.test(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Password must contain at least one special character",
+      });
+    }
+  }),
 
   emp_company_name: z
     .string()
