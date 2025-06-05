@@ -1,8 +1,25 @@
-import sequelize from '../config/sequelize';
+import sequelize from "../config/sequelize";
 
-import job from './job.model';
-import employee from './employee.model';
-import employeeJob from './employee_job.model';
+import job from "./job.model";
+import employee from "./employee.model";
+import employeeJob from "./employee_job.model";
+
+import customerModel from "./customer.model";
+import customerAuthModel from "./customerAuth.model";
+
+// One customer has one auth entry
+customerModel.hasOne(customerAuthModel, {
+  foreignKey: "cus_id",
+  as: "auth",
+  onDelete: "CASCADE",
+  onUpdate: "CASCADE",
+});
+
+// Auth belongs to a customer
+customerAuthModel.belongsTo(customerModel, {
+  foreignKey: "cus_id",
+  as: "customer",
+});
 
 // // One-to-many relation
 // employee.hasMany(job, { foreignKey: 'job_id' , as: 'job' });
@@ -20,10 +37,11 @@ job.hasMany(employee, {
   as: "employees",
 });
 
-
-export default  {
+export default {
   sequelize,
   employee,
   job,
   employeeJob,
+  customerModel,
+  customerAuthModel,
 };

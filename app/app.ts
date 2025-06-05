@@ -67,21 +67,7 @@ app.use("/api/v1", router);
 const PORT = process.env.PORT || 3000;
 /* REQUIRE DATABASE CONNECTION */
 
-/* CONNECT DATABASE AND START THE SERVER */
-// app.listen(PORT, async () => {
-//     try {
-//         await sequelize.authenticate();
-//         console.log('Database connection has been established successfully.');
 
-//         /* SYNC THE MODELS (create tables if they don't exist) */
-//         await sequelize.sync({ alter: true })
-//   .then(() => console.log("Database synced"))
-//   .catch(err => console.error("Sync error:", err));; // Use { force: true } to drop and recreate tables
-//     } catch (error) {
-//         console.error('Unable to connect to the database:', error);
-//     }
-//     console.log("App is listing on port " + PORT + " for Fuse2 node server")
-// });
 
 import models from "./models/index"; // Import your models with associations
 

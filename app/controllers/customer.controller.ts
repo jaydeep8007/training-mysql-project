@@ -4,11 +4,25 @@ import { hashPassword } from "../services/password.service";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { Op, ValidationError } from "sequelize"; // <-- Import Op here
+import { customerValidations } from "../validations/customer.validation";
 // ➕ Add Customer
 
 const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { cus_password, cus_confirm_password, ...rest } = req.body;
+
+    const parsed = customerValidations.customerCreateSchema.safeParse(req.body);
+       if (!parsed.success) {
+         const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+         return res.status(400).json({ message: errorMsg });
+       }
+    const { cus_password, 
+      cus_confirm_password, 
+      cus_email, 
+      cus_phone_number, 
+      cus_firstname, 
+      cus_lastname,
+      cus_status = "active"
+     } = parsed.data as typeof parsed.data & { cus_status: "active" | "inactive" | "restricted" | "blocked" };
 
     if (cus_password !== cus_confirm_password) {
       return responseHandler.error(
@@ -39,10 +53,13 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
     const hashedPassword = await hashPassword(cus_password);
 
     const newCustomer = await customerModel.create({
-      ...rest,
-      cus_password: hashedPassword,
-      cus_confirm_password: hashedPassword,
-    });
+  cus_firstname,     // First name string
+  cus_lastname,      // Last name string
+  cus_email,         // Email string
+  cus_phone_number,  // Phone number string
+  cus_password: hashedPassword,  // Password hashed string
+  cus_status,        // Status string, default to "active"
+});
 
     return responseHandler.success(
       res,
@@ -137,11 +154,10 @@ const updateCustomer = async (
   next: NextFunction
 ) => {
   try {
-    const updated = await customerModel.update(req.body, {
-      where: { cus_id: req.params.id },
-    });
+    // Find customer first
+    const customer = await customerModel.findByPk(req.params.id);
 
-    if (updated[0] === 0) {
+    if (!customer) {
       return responseHandler.error(
         res,
         "Customer not found",
@@ -149,28 +165,45 @@ const updateCustomer = async (
       );
     }
 
-    const customer = await customerModel.findByPk(req.params.id);
-    return responseHandler.success(
-      res,
-      "Customer updated successfully",
-      customer,
-      resCode.OK
-    );
-  } catch (error) {
-    // ✅ Handle Sequelize validation errors
-    if (error instanceof ValidationError) {
-      const messages = error.errors.map((err) => err.message);
+     // ✅ Validate request body
+    const parsed = customerValidations.customerUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+      return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
+    }
+
+    // Update in DB using Sequelize's update method
+    const [affectedRows] = await customerModel.update(parsed.data, {
+      where: { cus_id: req.params.id },
+    });
+
+    if (affectedRows === 0) {
       return responseHandler.error(
         res,
-        messages.join(", "),
+        "Update failed",
         resCode.BAD_REQUEST
       );
     }
 
-    // 🔁 Forward any other unhandled error to the global error handler
+    // Fetch the updated customer again
+    const updatedCustomer = await customerModel.findByPk(req.params.id);
+
+    return responseHandler.success(
+      res,
+      "Customer updated successfully",
+      updatedCustomer,
+      resCode.OK
+    );
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((err) => err.message);
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
+    }
+
     return next(error);
   }
 };
+
 
 // ❌ Delete Customer by ID
 const deleteCustomerById = async (

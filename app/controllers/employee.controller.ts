@@ -12,9 +12,7 @@ const getAllEmployees = async (
   next: NextFunction
 ) => {
   try {
-    
     const employees = await employeeModel.findAll();
-    console.log("Fetched employees:", employees);
 
     return responseHandler.success(
       res,
@@ -37,15 +35,6 @@ const getAllEmployees = async (
     return next(error);
   }
 };
-
-// const getAllEmployees = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const employees = await employeeModel.findAll();
-//     res.status(200).json(employees);
-//   } catch (error) {
-//     next(error); // Forward error to global error handler
-//   }
-// };
 
 // Create a new employee with Zod validation
 const createEmployee = async (
@@ -80,7 +69,6 @@ const createEmployee = async (
         resCode.BAD_REQUEST
       );
     }
-
     // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }

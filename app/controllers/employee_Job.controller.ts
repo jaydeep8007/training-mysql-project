@@ -1,22 +1,51 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import employeeJob from "../models/employee_job.model";
+import employee_jobValidation from "../validations/employee_job.validation";
+import { responseHandler } from "../services/responseHandler.service";
+import { resCode } from "../constants/resCode";
+import { ValidationError } from "sequelize";
 
- const assignJobToEmployee = async (req: Request, res: Response) => {
+const assignJobToEmployee = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    // expect emp_id and job_id in req.body
-    const { emp_id, job_id } = req.body;
 
-    if (!emp_id || !job_id) {
-       res.status(400).json({ message: "emp_id and job_id required" });
+    const parsed = employee_jobValidation.assignJobSchema.safeParse(req.body);
+    if (!parsed.success) {
+      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+      return res.status(400).json({ message: errorMsg });
     }
 
-    const assignment = await employeeJob.create({ emp_id, job_id });
-    res.status(201).json(assignment);
+    const { emp_id, job_id } = parsed.data;
+
+    if (!emp_id || !job_id) {
+      res.status(400).json({ message: "emp_id and job_id required" });
+    }
+
+    const assignment = await employeeJob.create(parsed.data);
+    return responseHandler.success(
+      res,
+      "Assignment created successfully for ",
+      assignment,
+      resCode.CREATED
+    );
   } catch (error) {
-    res.status(500).json({ message: "Failed to assign job", error });
+    // ✅ Handle Sequelize validation errors
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((err) => err.message);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
+    }
+    // 🔁 Forward any other unhandled error to the global error handler
+    return next(error);
   }
 };
 
 export default {
   assignJobToEmployee,
-}
+};

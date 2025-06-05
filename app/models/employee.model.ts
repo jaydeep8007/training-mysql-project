@@ -1,5 +1,6 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
+import job from "./job.model";
 const employee = sequelize.define(
   "employee",
   {
@@ -39,5 +40,6 @@ const employee = sequelize.define(
     collate: "utf8_general_ci",
   }
 );
+
 
 export default employee;

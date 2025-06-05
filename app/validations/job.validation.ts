@@ -27,19 +27,19 @@ export const jobCreateSchema = z.object({
 
 
 
-const indexedArraySchema = z.array(z.string()).refine((arr) => {
-  // For example, index 0 must be "apple"
-  return arr[0] === "apple";
-}, {
-  message: "First fruit must be apple",
-  path: [0], // error will be assigned to index 0
-});
+// const indexedArraySchema = z.array(z.string()).refine((arr) => {
+//   // For example, index 0 must be "apple"
+//   return arr[0] === "apple";
+// }, {
+//   message: "First fruit must be apple",
+//   path: [0], // error will be assigned to index 0
+// });
 
 
-// Parse a string and convert to uppercase
-const upperSchema = z.string().transform(val => val.toUpperCase());
-console.log(upperSchema.parse("hello")); // "HELLO"
+// // Parse a string and convert to uppercase
+// const upperSchema = z.string().transform(val => val.toUpperCase());
+// console.log(upperSchema.parse("hello")); // "HELLO"
 
-// Parse a string date and convert to Date object
-const dateSchema = z.string().transform(val => new Date(val));
-console.log(dateSchema.parse("2025-06-04")); // Date object for June 4, 2025
+// // Parse a string date and convert to Date object
+// const dateSchema = z.string().transform(val => new Date(val));
+// console.log(dateSchema.parse("2025-06-04")); // Date object for June 4, 2025

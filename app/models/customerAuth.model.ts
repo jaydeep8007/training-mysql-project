@@ -1,7 +1,5 @@
-
 import sequelize from "../config/sequelize";
 import { DataTypes } from "sequelize";
-
 
 const customerAuthModel = sequelize.define(
   "customer_auth",
@@ -13,11 +11,13 @@ const customerAuthModel = sequelize.define(
     },
     cus_id: {
       type: DataTypes.INTEGER,
-      // references: {
-      //     model: 'customers',
-      //     key: 'cus_id'
-      // },
-      // allowNull: false,
+      allowNull: false,
+      references: {
+        model: "customers", // the table name, not the model file name
+        key: "cus_id",
+      },
+      onUpdate: "CASCADE",
+      onDelete: "CASCADE",
     },
     cus_auth_token: {
       type: DataTypes.STRING,

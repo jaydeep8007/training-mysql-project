@@ -5,12 +5,24 @@ import { ValidationError, UniqueConstraintError } from "sequelize";
 import { resCode } from "../constants/resCode";
 import { responseHandler } from "../services/responseHandler.service";
 
-// Get all jobs
-const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
+// Create a new job
+const createJob = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const jobs = await jobModel.findAll();
+    const parsed = jobCreateSchema.safeParse(req.body);
 
-    return responseHandler.success(res, "Jobs fetched successfully", jobs, resCode.OK);
+    if (!parsed.success) {
+      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+      return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
+    }
+
+    const newJob = await jobModel.create(parsed.data);
+
+    return responseHandler.success(
+      res,
+      "Job created successfully",
+      newJob,
+      resCode.CREATED
+    );
   } catch (error) {
     // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
@@ -27,19 +39,17 @@ const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-// Create a new job
-const createJob = async (req: Request, res: Response, next: NextFunction) => {
+// Get all jobs
+const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parsed = jobCreateSchema.safeParse(req.body);
+    const jobs = await jobModel.findAll();
 
-    if (!parsed.success) {
-      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
-      return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
-    }
-
-    const newJob = await jobModel.create(parsed.data);
-
-    return responseHandler.success(res, "Job created successfully", newJob, resCode.CREATED);
+    return responseHandler.success(
+      res,
+      "Jobs fetched successfully",
+      jobs,
+      resCode.OK
+    );
   } catch (error) {
     // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
