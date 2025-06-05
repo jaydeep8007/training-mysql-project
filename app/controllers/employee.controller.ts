@@ -6,35 +6,6 @@ import { resCode } from "../constants/resCode";
 import { responseHandler } from "../services/responseHandler.service";
 import { ValidationError } from "sequelize";
 
-const getAllEmployees = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const employees = await employeeModel.findAll();
-
-    return responseHandler.success(
-      res,
-      "Employees feched succesfully",
-      employees,
-      resCode.OK
-    );
-  } catch (error) {
-    // ✅ Handle Sequelize validation errors
-    if (error instanceof ValidationError) {
-      const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
-    }
-
-    // 🔁 Forward any other unhandled error to the global error handler
-    return next(error);
-  }
-};
 
 // Create a new employee with Zod validation
 const createEmployee = async (
@@ -69,6 +40,37 @@ const createEmployee = async (
         resCode.BAD_REQUEST
       );
     }
+    // 🔁 Forward any other unhandled error to the global error handler
+    return next(error);
+  }
+};
+
+
+const getAllEmployees = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const employees = await employeeModel.findAll();
+
+    return responseHandler.success(
+      res,
+      "Employees feched succesfully",
+      employees,
+      resCode.OK
+    );
+  } catch (error) {
+    // ✅ Handle Sequelize validation errors
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((err) => err.message);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
+    }
+
     // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }

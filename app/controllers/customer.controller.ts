@@ -9,20 +9,22 @@ import { customerValidations } from "../validations/customer.validation";
 
 const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-
     const parsed = customerValidations.customerCreateSchema.safeParse(req.body);
-       if (!parsed.success) {
-         const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
-         return res.status(400).json({ message: errorMsg });
-       }
-    const { cus_password, 
-      cus_confirm_password, 
-      cus_email, 
-      cus_phone_number, 
-      cus_firstname, 
+    if (!parsed.success) {
+      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+      return res.status(400).json({ message: errorMsg });
+    }
+    const {
+      cus_password,
+      cus_confirm_password,
+      cus_email,
+      cus_phone_number,
+      cus_firstname,
       cus_lastname,
-      cus_status = "active"
-     } = parsed.data as typeof parsed.data & { cus_status: "active" | "inactive" | "restricted" | "blocked" };
+      cus_status = "active",
+    } = parsed.data as typeof parsed.data & {
+      cus_status: "active" | "inactive" | "restricted" | "blocked";
+    };
 
     if (cus_password !== cus_confirm_password) {
       return responseHandler.error(
@@ -53,13 +55,13 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
     const hashedPassword = await hashPassword(cus_password);
 
     const newCustomer = await customerModel.create({
-  cus_firstname,     // First name string
-  cus_lastname,      // Last name string
-  cus_email,         // Email string
-  cus_phone_number,  // Phone number string
-  cus_password: hashedPassword,  // Password hashed string
-  cus_status,        // Status string, default to "active"
-});
+      cus_firstname,
+      cus_lastname,
+      cus_email,
+      cus_phone_number,
+      cus_password: hashedPassword,
+      cus_status, // Status string, default to "active"
+    });
 
     return responseHandler.success(
       res,
@@ -165,7 +167,7 @@ const updateCustomer = async (
       );
     }
 
-     // ✅ Validate request body
+    // ✅ Validate request body
     const parsed = customerValidations.customerUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
@@ -178,11 +180,7 @@ const updateCustomer = async (
     });
 
     if (affectedRows === 0) {
-      return responseHandler.error(
-        res,
-        "Update failed",
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, "Update failed", resCode.BAD_REQUEST);
     }
 
     // Fetch the updated customer again
@@ -197,13 +195,16 @@ const updateCustomer = async (
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
     }
 
     return next(error);
   }
 };
-
 
 // ❌ Delete Customer by ID
 const deleteCustomerById = async (
