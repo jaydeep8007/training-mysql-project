@@ -2,7 +2,7 @@ import sequelize from "../config/sequelize";
 
 import job from "./job.model";
 import employee from "./employee.model";
-import employeeJob from "./employee_job.model";
+import employeeJob from "./employeeJob.model";
 
 import customerModel from "./customer.model";
 import customerAuthModel from "./customerAuth.model";

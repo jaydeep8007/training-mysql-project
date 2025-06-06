@@ -3,7 +3,6 @@ dotenv.config();
 
 import express from "express";
 import logger from "morgan";
-import { get } from "./config/config";
 
 import bodyParser from "body-parser";
 import cors from "cors"; //For cross domain error
@@ -53,9 +52,6 @@ app.use((req: any, res: any, next: any) => {
   next();
 });
 
-// app.use(timeout(120000));
-app.use(haltOnTimedout);
-
 function haltOnTimedout(req: any, res: any, next: any) {
   if (!req.timedout) next();
 }
@@ -63,13 +59,10 @@ function haltOnTimedout(req: any, res: any, next: any) {
 /* MAIN ROUTES FOR APP */
 app.use("/api/v1", router);
 
-// Server Start
 const PORT = process.env.PORT || 3000;
-/* REQUIRE DATABASE CONNECTION */
 
-
-
-import models from "./models/index"; // Import your models with associations
+// Import your models with associations
+import models from "./models/index";
 
 app.listen(PORT, async () => {
   try {

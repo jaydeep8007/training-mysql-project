@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import employeeJob from "../models/employee_job.model";
-import employee_jobValidation from "../validations/employee_job.validation";
+import employeeJob from "../models/employeeJob.model";
+import employee_jobValidation from "../validations/employeeJob.validation";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { ValidationError } from "sequelize";
@@ -58,7 +58,9 @@ const assignJobToManyEmployees = async (
 ) => {
   try {
     // ✅ Zod validation first
-    const parsed = employee_jobValidation.assignMultipleJobsSchema.safeParse(req.body);
+    const parsed = employee_jobValidation.assignMultipleJobsSchema.safeParse(
+      req.body
+    );
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
@@ -98,19 +100,21 @@ const assignJobToManyEmployees = async (
     });
 
     if (existingAssignments.length > 0) {
-      const alreadyAssignedEmpIds = existingAssignments.map((ea) => ea.get("emp_id"));
+      const alreadyAssignedEmpIds = existingAssignments.map((ea) =>
+        ea.get("emp_id")
+      );
       return responseHandler.error(
         res,
-        `These employees are already assigned a job: ${alreadyAssignedEmpIds.join(", ")}`,
+        `These employees are already assigned a job: ${alreadyAssignedEmpIds.join(
+          ", "
+        )}`,
         resCode.BAD_REQUEST
       );
     }
 
     // ✅ All checks passed — assign job
     const assignments = await Promise.all(
-      emp_ids.map((emp_id) =>
-        employeeJob.create({ emp_id, job_id })
-      )
+      emp_ids.map((emp_id) => employeeJob.create({ emp_id, job_id }))
     );
 
     return responseHandler.success(
@@ -122,7 +126,11 @@ const assignJobToManyEmployees = async (
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
     }
 
     return next(error);
@@ -130,6 +138,5 @@ const assignJobToManyEmployees = async (
 };
 export default {
   assignJobToEmployee,
-  assignJobToManyEmployees
-
+  assignJobToManyEmployees,
 };

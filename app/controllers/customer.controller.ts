@@ -3,7 +3,7 @@ import customerModel from "../models/customer.model";
 import { hashPassword } from "../services/password.service";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
-import { Op, ValidationError } from "sequelize"; // <-- Import Op here
+import { Op, ValidationError } from "sequelize";
 import { customerValidations } from "../validations/customer.validation";
 // ➕ Add Customer
 
@@ -37,7 +37,6 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
     const existing = await customerModel.findOne({
       where: {
         [Op.or]: [
-          // <-- Use Op.or here
           { cus_email: req.body.cus_email },
           { cus_phone_number: req.body.cus_phone_number },
         ],
