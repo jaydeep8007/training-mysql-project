@@ -370,6 +370,17 @@ const resetPassword = async (
       resCode.OK
     );
   } catch (error) {
+    // ✅ Handle Sequelize validation errors
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((err) => err.message);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
+    }
+
+    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
