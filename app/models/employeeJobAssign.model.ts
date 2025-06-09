@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
 
-const employeeJob = sequelize.define('employee_job', {
+const employeeJobModel = sequelize.define('employee_job', {
   emp_job_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -31,4 +31,4 @@ const employeeJob = sequelize.define('employee_job', {
   timestamps: true
 });
 
-export default employeeJob;
+export default employeeJobModel;

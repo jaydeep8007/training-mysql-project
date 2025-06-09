@@ -33,14 +33,7 @@ const signupCustomer = async (
       cus_confirm_password,
     } = parsed.data;
 
-    // ✅ Check password match after Zod validates individual fields
-    if (cus_password !== cus_confirm_password) {
-      return responseHandler.error(
-        res,
-        "Passwords do not match",
-        resCode.BAD_REQUEST
-      );
-    }
+  
 
     // ✅ Hash password
     const hashedPassword = await hashPassword(cus_password);
@@ -117,14 +110,7 @@ const signinCustomer = async (
 
     const { cus_email, cus_password } = parsed.data;
 
-    // Validate input
-    if (!cus_email || !cus_password) {
-      return responseHandler.error(
-        res,
-        "Email and password are required",
-        resCode.BAD_REQUEST
-      );
-    }
+   
 
     // Find customer by email
     const customer = await customerModel.findOne({ where: { cus_email } });

@@ -2,7 +2,7 @@ import sequelize from "../config/sequelize";
 import { DataTypes } from "sequelize";
 
 const customerAuthModel = sequelize.define(
-  "customer_auth",
+  "customerAuth",
   {
     cus_auth_id: {
       type: DataTypes.INTEGER,

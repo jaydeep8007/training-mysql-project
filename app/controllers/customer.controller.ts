@@ -26,13 +26,7 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
       cus_status: "active" | "inactive" | "restricted" | "blocked";
     };
 
-    if (cus_password !== cus_confirm_password) {
-      return responseHandler.error(
-        res,
-        "Password and confirm password do not match",
-        resCode.BAD_REQUEST
-      );
-    }
+  
 
     const existing = await customerModel.findOne({
       where: {

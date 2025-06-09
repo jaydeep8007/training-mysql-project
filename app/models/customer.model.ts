@@ -16,7 +16,7 @@ interface CustomerAttributes {
 
 type CustomerCreationAttributes = Optional<CustomerAttributes, "cus_id">;
 
-class Customer
+class customerModel
   extends Model<CustomerAttributes, CustomerCreationAttributes>
   implements CustomerAttributes
 {
@@ -34,10 +34,10 @@ class Customer
   public readonly updatedAt!: Date;
 }
 
-Customer.init(
+customerModel.init(
   {
     cus_id: {
- type: DataTypes.INTEGER,
+      type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
@@ -103,12 +103,10 @@ Customer.init(
       },
     },
     cus_status: {
-    type: DataTypes.ENUM('active', 'inactive', 'restricted', 'blocked'),
-    allowNull: false,
-    defaultValue: 'active',
-  },
-    //add status enum active inactive restricted blocked
-  
+      type: DataTypes.ENUM("active", "inactive", "restricted", "blocked"),
+      allowNull: false,
+      defaultValue: "active",
+    },
   },
   {
     sequelize,
@@ -117,4 +115,4 @@ Customer.init(
   }
 );
 
-export default Customer;
+export default customerModel;

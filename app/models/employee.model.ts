@@ -1,7 +1,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
-import job from "./job.model";
-const employee = sequelize.define(
+
+const employeeModel = sequelize.define(
   "employee",
   {
     emp_id: {
@@ -42,4 +42,4 @@ const employee = sequelize.define(
 );
 
 
-export default employee;
+export default employeeModel;

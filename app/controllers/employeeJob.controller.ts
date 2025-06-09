@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import employeeJob from "../models/employeeJob.model";
+import employeeJob from "../models/employeeJobAssign.model";
 import employee_jobValidation from "../validations/employeeJob.validation";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";

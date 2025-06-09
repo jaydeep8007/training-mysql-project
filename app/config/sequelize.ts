@@ -21,7 +21,7 @@ export const sequelize = new Sequelize(
 sequelize
   .authenticate()
   .then(() => {
-    logger.info("✅ Database connection has been established successfully.");
+    logger.info("✅ MySql Database connection has been established successfully.");
   })
   .catch((error) => {
     logger.error("❌ Unable to connect to the database:", error);
