@@ -110,7 +110,7 @@ customerModel.init(
   },
   {
     sequelize,
-    tableName: "customers",
+    tableName: "customer",
     timestamps: true,
   }
 );

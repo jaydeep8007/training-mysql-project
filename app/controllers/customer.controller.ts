@@ -5,15 +5,20 @@ import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { Op, ValidationError } from "sequelize";
 import { customerValidations } from "../validations/customer.validation";
-// ➕ Add Customer
+import { msg } from "../constants/language/en.constant";
+import employeeModel from "../models/employee.model";
 
+// ➕ Add Customer
 const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parsed = customerValidations.customerCreateSchema.safeParse(req.body);
+    const parsed =
+      await customerValidations.customerCreateSchema.safeParseAsync(req.body);
+
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
-      return res.status(400).json({ message: errorMsg });
+      return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
     }
+
     const {
       cus_password,
       cus_confirm_password,
@@ -26,25 +31,6 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
       cus_status: "active" | "inactive" | "restricted" | "blocked";
     };
 
-  
-
-    const existing = await customerModel.findOne({
-      where: {
-        [Op.or]: [
-          { cus_email: req.body.cus_email },
-          { cus_phone_number: req.body.cus_phone_number },
-        ],
-      },
-    });
-
-    if (existing) {
-      return responseHandler.error(
-        res,
-        "Email or phone already exists",
-        resCode.BAD_REQUEST
-      );
-    }
-
     const hashedPassword = await hashPassword(cus_password);
 
     const newCustomer = await customerModel.create({
@@ -53,17 +39,16 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
       cus_email,
       cus_phone_number,
       cus_password: hashedPassword,
-      cus_status, // Status string, default to "active"
+      cus_status,
     });
 
     return responseHandler.success(
       res,
-      "Customer added successfully",
+      msg.customer.addSuccess,
       newCustomer,
       resCode.CREATED
     );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -73,7 +58,6 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
       );
     }
 
-    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
@@ -88,7 +72,7 @@ const getCustomers = async (
     const customers = await customerModel.findAll();
     return responseHandler.success(
       res,
-      "Customers fetched successfully",
+     msg.customer.fechedSuccess,
       customers,
       resCode.OK
     );
@@ -107,27 +91,32 @@ const getCustomers = async (
     return next(error);
   }
 };
-
-// 🔍 Get Customer by ID
 const getCustomerById = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const customer = await customerModel.findByPk(req.params.id);
+    const customer = await customerModel.findByPk(req.params.id, {
+      include: [
+        {
+          model: employeeModel,
+          as: "employees",  // match alias in association
+          attributes: ["emp_id", "emp_name", "emp_email", "emp_mobile_number"], // customize fields
+        },
+      ],
+    });
 
     if (!customer) {
       return responseHandler.error(
         res,
-        "Customer not found",
+        msg.customer.notFound,
         resCode.NOT_FOUND
       );
     }
 
-    return responseHandler.success(res, "Customer found", customer, resCode.OK);
+    return responseHandler.success(res, msg.customer.found, customer, resCode.OK);
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -137,7 +126,6 @@ const getCustomerById = async (
       );
     }
 
-    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
@@ -155,7 +143,7 @@ const updateCustomer = async (
     if (!customer) {
       return responseHandler.error(
         res,
-        "Customer not found",
+        msg.customer.notFound,
         resCode.NOT_FOUND
       );
     }
@@ -173,7 +161,7 @@ const updateCustomer = async (
     });
 
     if (affectedRows === 0) {
-      return responseHandler.error(res, "Update failed", resCode.BAD_REQUEST);
+      return responseHandler.error(res, msg.customer.updateFailed, resCode.BAD_REQUEST);
     }
 
     // Fetch the updated customer again
@@ -181,7 +169,7 @@ const updateCustomer = async (
 
     return responseHandler.success(
       res,
-      "Customer updated successfully",
+      msg.customer.updateSuccess,
       updatedCustomer,
       resCode.OK
     );
@@ -213,14 +201,14 @@ const deleteCustomerById = async (
     if (!deleted) {
       return responseHandler.error(
         res,
-        "Customer not found",
+        msg.customer.notFound,
         resCode.NOT_FOUND
       );
     }
 
     return responseHandler.success(
       res,
-      "Customer deleted successfully",
+    msg.customer.deleteSuccess,
       null,
       resCode.OK
     );

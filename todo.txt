@@ -12,3 +12,11 @@ Accurate multilingual comparisons	utf8_unicode_ci or utf8mb4_unicode_ci
 Emoji or full Unicode support	    utf8mb4_unicode_ci
 Case-sensitive usernames,passwords	utf8mb4_bin
 
+syncronised and asyncronised differnce concept javascript 
+safe parse and parse diffence 
+collition in mongo 
+naming convention changes to camel case 
+primary id changes 
+addd all validation in zod 
+add employee as a reference to customer and add validation in employee apis 
+

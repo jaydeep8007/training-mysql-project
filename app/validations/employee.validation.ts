@@ -1,59 +1,91 @@
+// schemas/employeeCreateSchema.ts
 import { z } from "zod";
+import employeeModel from "../models/employee.model";
 
-export const employeeCreateSchema = z.object({
-  emp_name: z
-    .string()
-    .min(2, "Employee name must be at least 2 characters")
-    .max(100, "Employee name must be at most 100 characters"),
 
-emp_email: z
-  .string()
-  .email("Invalid email address")
-  .transform(email => email.toLowerCase())
-,
 
-  emp_password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(
-      /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()_+]).+$/,
-      "Password must include uppercase, lowercase, number, and special character"
-    )
-    .superRefine((val, ctx) => {
-    if (!/[A-Z]/.test(val)) {
+export const validateStrongPassword = (val: string, ctx: z.RefinementCtx) => {
+  if (!/[A-Z]/.test(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Password must contain at least one uppercase letter",
+    });
+  }
+  if (!/[a-z]/.test(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Password must contain at least one lowercase letter",
+    });
+  }
+  if (!/\d/.test(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Password must contain at least one number",
+    });
+  }
+  if (!/[!@#$%^&*()_+]/.test(val)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Password must contain at least one special character",
+    });
+  }
+};
+
+export const employeeCreateSchema = z
+  .object({
+    emp_name: z
+      .string()
+      .min(2, "Employee name must be at least 2 characters")
+      .max(100, "Employee name must be at most 100 characters"),
+
+    emp_email: z
+      .string()
+      .email("Invalid email address")
+      .transform((email) => email.toLowerCase()),
+
+    emp_password: z.string().min(8, "Password must be at least 8 characters")
+    .superRefine(validateStrongPassword),
+
+    emp_company_name: z
+      .string()
+      .min(2, "Company name must be at least 2 characters")
+      .max(100, "Company name must be at most 100 characters"),
+
+     cus_id: z
+       .number({
+          required_error: "Customer ID is required",
+          invalid_type_error: "Customer ID must be a number",
+        }),   
+
+    emp_mobile_number: z
+      .string()
+      .min(10, "Mobile number must be equal or greater than 10 digits")
+      .max(15, "Mobile number must be at most 15 digits")
+      .regex(/^\d+$/, "Mobile number must contain only digits"),
+  })
+  .superRefine(async (data, ctx) => {
+    // ✅ Check unique email
+    const existingEmail = await employeeModel.findOne({
+      where: { emp_email: data.emp_email },
+    });
+    if (existingEmail) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Password must contain at least one uppercase letter",
+        message: "Email already exists",
+        path: ["emp_email"],
       });
     }
-    if (!/[a-z]/.test(val)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Password must contain at least one lowercase letter",
-      });
-    }
-    if (!/\d/.test(val)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Password must contain at least one number",
-      });
-    }
-    if (!/[!@#$%^&*()_+]/.test(val)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Password must contain at least one special character",
-      });
-    }
-  }),
 
-  emp_company_name: z
-    .string()
-    .min(2, "Company name must be at least 2 characters")
-    .max(100, "Company name must be at most 100 characters"),
+    // ✅ Check unique mobile number
+    const existingPhone = await employeeModel.findOne({
+      where: { emp_mobile_number: data.emp_mobile_number },
+    });
+    if (existingPhone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Mobile number already exists",
+        path: ["emp_mobile_number"],
+      });
+    }
 
-  emp_mobile_number: z
-    .string()
-    .min(10, "Mobile number must be equal or greater than 10 digits")
-    .max(15, "Mobile number must be at most 15 digits")
-    .regex(/^\d+$/, "Mobile number must contain only digits"),
-});
+  });

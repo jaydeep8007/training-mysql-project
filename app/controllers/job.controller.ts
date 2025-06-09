@@ -8,7 +8,7 @@ import { responseHandler } from "../services/responseHandler.service";
 // Create a new job
 const createJob = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parsed = jobCreateSchema.safeParse(req.body);
+    const parsed = await jobCreateSchema.safeParseAsync(req.body);
 
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
