@@ -44,7 +44,6 @@
 
 // export default employeeModel;
 
-
 import { DataTypes } from "sequelize";
 import sequelize from "../config/sequelize";
 
@@ -85,7 +84,7 @@ const employeeModel = sequelize.define(
       allowNull: false,
       references: {
         model: "customer", // 👈 referenced table name (should match DB table name)
-        key: "cus_id",     // 👈 referenced column
+        key: "cus_id", // 👈 referenced column
       },
       onUpdate: "CASCADE",
       onDelete: "CASCADE",

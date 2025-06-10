@@ -68,11 +68,7 @@ customerModel.init(
         name: "unique_cus_email",
         msg: "This Email Already Exists.",
       },
-      validate: {
-        isEmail: {
-          msg: "Please provide a valid email address",
-        },
-      },
+      
     },
 
     cus_phone_number: {
@@ -82,15 +78,7 @@ customerModel.init(
         name: "unique_cus_phone_number",
         msg: "Phone number already exists",
       },
-      validate: {
-        isNumeric: {
-          msg: "Phone number must contain only numbers",
-        },
-        len: {
-          args: [10, 15],
-          msg: "Phone number must be between 10 and 15 digits",
-        },
-      },
+      
     },
     cus_password: {
       type: DataTypes.STRING,

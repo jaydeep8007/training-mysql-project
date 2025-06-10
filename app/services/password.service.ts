@@ -5,8 +5,13 @@ const saltRounds = 10;
 
 /* ✅ HASH PASSWORD USING ONLY BCRYPT */
 export async function hashPassword(password: string): Promise<string> {
-    const bcryptHash = await bcrypt.hash(password, saltRounds);
-    return bcryptHash;
+  try {
+    const hashed = await bcrypt.hash(password, saltRounds);
+    return hashed;
+  } catch (error) {
+    console.error("Hashing error:", error);
+    throw new Error("Failed to hash password");
+  }
 }
 
 /* ✅ COMPARE PASSWORD USING ONLY BCRYPT */

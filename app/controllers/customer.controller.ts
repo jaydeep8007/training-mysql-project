@@ -1,12 +1,17 @@
 import { Request, Response, NextFunction } from "express";
-import customerModel from "../models/customer.model";
 import { hashPassword } from "../services/password.service";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { Op, ValidationError } from "sequelize";
 import { customerValidations } from "../validations/customer.validation";
 import { msg } from "../constants/language/en.constant";
+import customerModel from "../models/customer.model";
 import employeeModel from "../models/employee.model";
+import commonQuery from "../services/commonQuery.service";
+
+// 🔸 Initialize customer-specific query
+const customerQuery = commonQuery(customerModel);
+const employeeQuery = commonQuery(employeeModel);
 
 // ➕ Add Customer
 const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
@@ -33,7 +38,7 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
 
     const hashedPassword = await hashPassword(cus_password);
 
-    const newCustomer = await customerModel.create({
+    const newCustomer = await customerQuery.create({
       cus_firstname,
       cus_lastname,
       cus_email,
@@ -44,10 +49,11 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
 
     return responseHandler.success(
       res,
-      msg.customer.addSuccess,
+      msg.customer.createSuccess,
       newCustomer,
       resCode.CREATED
     );
+
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
@@ -69,10 +75,10 @@ const getCustomers = async (
   next: NextFunction
 ) => {
   try {
-    const customers = await customerModel.findAll();
+    const customers = await customerQuery.getAll();
     return responseHandler.success(
       res,
-     msg.customer.fechedSuccess,
+      msg.customer.fetchSuccess,
       customers,
       resCode.OK
     );
@@ -101,7 +107,7 @@ const getCustomerById = async (
       include: [
         {
           model: employeeModel,
-          as: "employees",  // match alias in association
+          as: "employees", // match alias in association
           attributes: ["emp_id", "emp_name", "emp_email", "emp_mobile_number"], // customize fields
         },
       ],
@@ -115,7 +121,12 @@ const getCustomerById = async (
       );
     }
 
-    return responseHandler.success(res, msg.customer.found, customer, resCode.OK);
+    return responseHandler.success(
+      res,
+      msg.customer.fetchSuccess,
+      customer,
+      resCode.OK
+    );
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
@@ -143,13 +154,13 @@ const updateCustomer = async (
     if (!customer) {
       return responseHandler.error(
         res,
-        msg.customer.notFound,
+        msg.customer.fetchFailed,
         resCode.NOT_FOUND
       );
     }
 
     // ✅ Validate request body
-    const parsed = customerValidations.customerUpdateSchema.safeParse(req.body);
+    const parsed =await customerValidations.customerUpdateSchema.safeParseAsync(req.body);
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
@@ -159,9 +170,13 @@ const updateCustomer = async (
     const [affectedRows] = await customerModel.update(parsed.data, {
       where: { cus_id: req.params.id },
     });
-
+//
     if (affectedRows === 0) {
-      return responseHandler.error(res, msg.customer.updateFailed, resCode.BAD_REQUEST);
+      return responseHandler.error(
+        res,
+        msg.customer.updateFailed,
+        resCode.BAD_REQUEST
+      );
     }
 
     // Fetch the updated customer again
@@ -201,14 +216,14 @@ const deleteCustomerById = async (
     if (!deleted) {
       return responseHandler.error(
         res,
-        msg.customer.notFound,
+        msg.customer.fetchFailed,
         resCode.NOT_FOUND
       );
     }
 
     return responseHandler.success(
       res,
-    msg.customer.deleteSuccess,
+      msg.customer.deleteSuccess,
       null,
       resCode.OK
     );

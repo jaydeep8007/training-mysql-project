@@ -10,15 +10,15 @@ const jobModel = sequelize.define(
       autoIncrement: true,
     },
     job_name: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(),
       allowNull: false,
     },
     job_sku: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(),
       allowNull: false,
     },
     job_category: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(),
       allowNull: false,
     },
   },

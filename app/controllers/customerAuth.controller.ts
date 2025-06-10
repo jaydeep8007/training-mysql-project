@@ -7,6 +7,7 @@ import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { ValidationError } from "sequelize";
 import { customerValidations } from "../validations/customer.validation";
+import { msg } from "../constants/language/en.constant";
 
 const signupCustomer = async (
   req: Request,
@@ -14,12 +15,13 @@ const signupCustomer = async (
   next: NextFunction
 ) => {
   try {
-    // ✅ Zod validation using your schema
-    const parsed = customerValidations.customerCreateSchema.safeParse(req.body);
+    // ✅ Zod validation
+    const parsed =
+      await customerValidations.customerCreateSchema.safeParseAsync(req.body);
 
     if (!parsed.success) {
       const errors = parsed.error.errors.map(
-        (err) => `${err.path[0]}: ${err.message}`
+        (err) => `${err.path[0] || "field"}: ${err.message}`
       );
       return responseHandler.error(res, errors.join(", "), resCode.BAD_REQUEST);
     }
@@ -30,27 +32,24 @@ const signupCustomer = async (
       cus_email,
       cus_phone_number,
       cus_password,
-      cus_confirm_password,
     } = parsed.data;
-
-  
 
     // ✅ Hash password
     const hashedPassword = await hashPassword(cus_password);
 
-    // ✅ Create customer (confirm password not stored)
+    // ✅ Create new customer (exclude confirm_password)
     const newCustomer = await customerModel.create({
       cus_firstname,
       cus_lastname,
       cus_email,
       cus_phone_number,
       cus_password: hashedPassword,
-      cus_status: "active", // default
+      cus_status: "active", // or use a constant if defined
     });
 
     const customerData = newCustomer.get();
 
-    // ✅ Generate tokens
+    // ✅ Generate auth tokens
     const token = authToken.generateAuthToken({
       user_id: customerData.cus_id,
       email: customerData.cus_email,
@@ -70,7 +69,7 @@ const signupCustomer = async (
 
     return responseHandler.success(
       res,
-      "Customer created and signed up successfully",
+      msg.auth.registerSuccess,
       {
         customer: customerData,
         token,
@@ -79,6 +78,7 @@ const signupCustomer = async (
       resCode.CREATED
     );
   } catch (error) {
+    // Sequelize validation fallback
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -88,6 +88,7 @@ const signupCustomer = async (
       );
     }
 
+    // Unexpected error
     return next(error);
   }
 };
@@ -99,7 +100,9 @@ const signinCustomer = async (
 ) => {
   try {
     // ✅ Validate input with Zod
-    const parsed = customerValidations.customerLoginSchema.safeParse(req.body);
+    const parsed = await customerValidations.customerLoginSchema.safeParseAsync(
+      req.body
+    );
 
     if (!parsed.success) {
       const errors = parsed.error.errors.map(
@@ -110,20 +113,19 @@ const signinCustomer = async (
 
     const { cus_email, cus_password } = parsed.data;
 
-   
-
     // Find customer by email
     const customer = await customerModel.findOne({ where: { cus_email } });
 
     if (!customer) {
       return responseHandler.error(
         res,
-        "Customer not found",
+        msg.customer.notFound,
         resCode.NOT_FOUND
       );
     }
 
     const customerData = customer.get();
+    console.log("Customer data:", customerData);
 
     // Compare passwords
     const isValid = await comparePasswords(
@@ -134,7 +136,7 @@ const signinCustomer = async (
     if (!isValid) {
       return responseHandler.error(
         res,
-        "Invalid password",
+        msg.common.invalidPassword,
         resCode.UNAUTHORIZED
       );
     }
@@ -159,17 +161,11 @@ const signinCustomer = async (
 
     return responseHandler.success(
       res,
-      "Login successful",
+      msg.auth.loginSuccess,
       {
         token,
         refreshToken,
-        customer: {
-          cus_id: customerData.cus_id,
-          cus_firstname: customerData.cus_firstname,
-          cus_lastname: customerData.cus_lastname,
-          cus_email: customerData.cus_email,
-          cus_phone_number: customerData.cus_phone_number,
-        },
+        customer: {},
       },
       resCode.OK
     );
@@ -205,7 +201,7 @@ const forgotPassword = async (
     if (!cus_email) {
       return responseHandler.error(
         res,
-        "Email is required",
+        msg.auth.emailRequired,
         resCode.BAD_REQUEST
       );
     }
@@ -216,7 +212,7 @@ const forgotPassword = async (
     if (!customer) {
       return responseHandler.error(
         res,
-        "Customer not found",
+        msg.customer.notFound,
         resCode.NOT_FOUND
       );
     }
@@ -245,7 +241,7 @@ const forgotPassword = async (
     // ✅ Success response
     return responseHandler.success(
       res,
-      "Reset token has been generated successfully",
+      msg.auth.resetTokenSent,
       { reset_token: resetToken },
       resCode.OK
     );
@@ -279,15 +275,7 @@ const resetPassword = async (
     if (!reset_token || !new_password || !confirm_password) {
       return responseHandler.error(
         res,
-        "All fields are required",
-        resCode.BAD_REQUEST
-      );
-    }
-
-    if (new_password !== confirm_password) {
-      return responseHandler.error(
-        res,
-        "Passwords do not match",
+        msg.common.requiredAllFields,
         resCode.BAD_REQUEST
       );
     }
@@ -300,7 +288,7 @@ const resetPassword = async (
     if (!authEntry) {
       return responseHandler.error(
         res,
-        "Invalid or expired reset token",
+        msg.auth.invalidResetToken,
         resCode.UNAUTHORIZED
       );
     }

@@ -1,11 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import employeeJob from "../models/employeeJobAssign.model";
-import employee_jobValidation from "../validations/employeeJob.validation";
+import employeeJobValidation from "../validations/employeeJob.validation";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
 import { ValidationError } from "sequelize";
 import job from "../models/job.model";
-import employee from "../models/employee.model";
+import employeeModel from "../models/employee.model";
+import { msg } from "../constants/language/en.constant";
+
 
 const assignJobToEmployee = async (
   req: Request,
@@ -14,7 +16,7 @@ const assignJobToEmployee = async (
 ) => {
   try {
     // ✅ Validate with Zod
-    const parsed = employee_jobValidation.assignJobSchema.safeParse(req.body);
+    const parsed = employeeJobValidation.assignJobSchema.safeParse(req.body);
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
@@ -22,21 +24,12 @@ const assignJobToEmployee = async (
 
     const { emp_id, job_id } = parsed.data;
 
-    // ✅ Double check presence (optional if Zod handles this)
-    if (!emp_id || !job_id) {
-      return responseHandler.error(
-        res,
-        "emp_id and job_id are required",
-        resCode.BAD_REQUEST
-      );
-    }
-
     // ✅ Create assignment
     const assignment = await employeeJob.create(parsed.data);
 
     return responseHandler.success(
       res,
-      "Assignment created successfully",
+      msg.employeeJob.assignSuccess,
       assignment,
       resCode.CREATED
     );
@@ -58,7 +51,7 @@ const assignJobToManyEmployees = async (
 ) => {
   try {
     // ✅ Zod validation first
-    const parsed = employee_jobValidation.assignMultipleJobsSchema.safeParse(
+    const parsed = await employeeJobValidation.assignMultipleJobsSchema.safeParseAsync(
       req.body
     );
     if (!parsed.success) {
@@ -79,7 +72,7 @@ const assignJobToManyEmployees = async (
     }
 
     // ✅ Check if all employee IDs exist
-    const foundEmployees = await employee.findAll({
+    const foundEmployees = await employeeModel.findAll({
       where: { emp_id: emp_ids },
     });
 
@@ -119,7 +112,7 @@ const assignJobToManyEmployees = async (
 
     return responseHandler.success(
       res,
-      "Assignments created successfully",
+      msg.employeeJob.assignSuccess,
       assignments,
       resCode.CREATED
     );

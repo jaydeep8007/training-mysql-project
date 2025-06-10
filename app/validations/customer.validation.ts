@@ -364,9 +364,11 @@ const customerUpdateSchema = z.object({
     .optional(),
 });
 
-const forgotPasswordSchema = z.object({
+ const forgotPasswordSchema = z.object({
   cus_email: z
-    .string()
+    .string({
+      required_error: "Email is required",
+    })
     .trim()
     .email("Invalid email address")
     .transform((email) => email.toLowerCase()),
@@ -374,15 +376,29 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z
   .object({
-    reset_token: z.string().min(1, "Reset token is required"),
-    new_password: z.string().min(8, "Password must be at least 8 characters").superRefine(validateStrongPassword),
-    confirm_password: z.string().min(8, "Confirm password is required"),
+    reset_token: z
+      .string({
+        required_error: "Reset token is required",
+      })
+      .min(1, "Reset token is required"),
+
+    new_password: z
+      .string({
+        required_error: "New password is required",
+      })
+      .min(8, "Password must be at least 8 characters")
+      .superRefine(validateStrongPassword),
+
+    confirm_password: z
+      .string({
+        required_error: "Confirm password is required",
+      })
+      .min(8, "Confirm password must be at least 8 characters"),
   })
   .refine((data) => data.new_password === data.confirm_password, {
     message: "Passwords do not match",
     path: ["confirm_password"],
   });
-
 // Final export
 export const customerValidations = {
   customerCreateSchema,

@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import jobModel from "../models/job.model";
 import { jobCreateSchema } from "../validations/job.validation";
-import { ValidationError, UniqueConstraintError } from "sequelize";
+import { ValidationError } from "sequelize";
 import { resCode } from "../constants/resCode";
 import { responseHandler } from "../services/responseHandler.service";
+import { msg } from "../constants/language/en.constant";
 
 // Create a new job
 const createJob = async (req: Request, res: Response, next: NextFunction) => {
@@ -19,7 +20,7 @@ const createJob = async (req: Request, res: Response, next: NextFunction) => {
 
     return responseHandler.success(
       res,
-      "Job created successfully",
+      msg.job.createSuccess,
       newJob,
       resCode.CREATED
     );
@@ -44,12 +45,7 @@ const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const jobs = await jobModel.findAll();
 
-    return responseHandler.success(
-      res,
-      "Jobs fetched successfully",
-      jobs,
-      resCode.OK
-    );
+    return responseHandler.success(res, msg.job.fetchSuccess, jobs, resCode.OK);
   } catch (error) {
     // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
