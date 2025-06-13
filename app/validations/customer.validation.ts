@@ -295,7 +295,7 @@ const customerCreateSchema = z
     cus_confirm_password: z.string().min(8, "Confirm password is required"),
 
     cus_status: z.string().optional(),
-  })
+  }).strict()
   .refine((data) => data.cus_password === data.cus_confirm_password, {
     message: "Passwords do not match",
     path: ["cus_confirm_password"],
@@ -362,7 +362,7 @@ const customerUpdateSchema = z.object({
       }),
     })
     .optional(),
-});
+}).strict();
 
  const forgotPasswordSchema = z.object({
   cus_email: z
@@ -372,11 +372,11 @@ const customerUpdateSchema = z.object({
     .trim()
     .email("Invalid email address")
     .transform((email) => email.toLowerCase()),
-});
+}).strict();
 
 const resetPasswordSchema = z
   .object({
-    reset_token: z
+    cus_auth_refresh_token: z
       .string({
         required_error: "Reset token is required",
       })
@@ -394,7 +394,7 @@ const resetPasswordSchema = z
         required_error: "Confirm password is required",
       })
       .min(8, "Confirm password must be at least 8 characters"),
-  })
+  }).strict()
   .refine((data) => data.new_password === data.confirm_password, {
     message: "Passwords do not match",
     path: ["confirm_password"],

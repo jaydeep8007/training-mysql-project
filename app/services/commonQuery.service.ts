@@ -30,37 +30,60 @@ const commonQuery = (model: any) => {
       }
     },
 
-    // ✅ GET BY PRIMARY KEY (usually ID)
-    async getById(id: number | string) {
+    // ✅ GET BY PRIMARY KEY with options
+    async getById(id: number | string, options: Record<string, any> = {}) {
       try {
-        const item = await model.findByPk(id);
+        const item = await model.findByPk(id, options);
         return item;
       } catch (error) {
         throw error;
       }
     },
 
-    // ✅ DELETE BY PRIMARY KEY
-    async deleteById(id: number | string) {
-      try {
-        const deletedCount = await model.destroy({ where: { id } });
-        return deletedCount; // returns number of rows deleted
-      } catch (error) {
-        throw error;
-      }
-    },
+    // ✅ DELETE by filter or primary key (no hardcoded messages)
+async deleteById(
+  filter: Record<string, any> | number | string,
+  options: { returnDeleted?: boolean } = {}
+) {
+  try {
+    const whereClause =
+      typeof filter === "object" ? filter : { id: filter };
 
-    // ✅ UPDATE by filter
-    async update(
-      filter: Record<string, any>,
-      data: Record<string, any>
-    ) {
+    // Check if the item exists before deletion
+    const existingItem = await model.findOne({ where: whereClause });
+
+    if (!existingItem) {
+      return {
+        deleted: false,
+        deletedCount: 0,
+      };
+    }
+
+    const deletedItem = options.returnDeleted ? existingItem : null;
+
+    const deletedCount = await model.destroy({ where: whereClause });
+
+    return {
+      deleted: deletedCount > 0,
+      deletedCount,
+      deletedItem,
+    };
+  } catch (error) {
+    throw error;
+  }
+},
+
+    // ✅ UPDATE by filter (MySQL-compatible)
+    async update(filter: Record<string, any>, data: Record<string, any>) {
       try {
-        const [affectedCount, affectedRows] = await model.update(data, {
+        const [affectedCount] = await model.update(data, {
           where: filter,
-          returning: true, // PostgreSQL only; MySQL will not return updated rows
         });
-        return { affectedCount, affectedRows }; // rows won't be populated in MySQL
+
+        // ✅ Fetch updated rows manually (optional)
+        const updatedRows = await model.findAll({ where: filter });
+
+        return { affectedCount, updatedRows };
       } catch (error) {
         throw error;
       }

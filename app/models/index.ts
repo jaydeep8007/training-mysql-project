@@ -27,13 +27,13 @@ employeeModel.belongsTo(jobModel, {
 });
 jobModel.hasMany(employeeModel, {
   foreignKey: "job_id",
-  as: "employees",
+  as: "employee",
 });
 
 // 3. Employee and Customer (Many Employees per Customer)
 customerModel.hasMany(employeeModel, {
   foreignKey: "cus_id",
-  as: "employees",
+  as: "employee",
 });
 employeeModel.belongsTo(customerModel, {
   foreignKey: "cus_id",

@@ -10,6 +10,6 @@ import employeeJobController from "../controllers/employeeJob.controller";
 
 // 📦 Employee CRUD routes
 router.post("/", employeeJobController.assignJobToEmployee);
-router.post("/assign-multiple", employeeJobController.assignJobToManyEmployees);
+router.post("/assign-many", employeeJobController.assignJobToManyEmployees);
 
 export default router;

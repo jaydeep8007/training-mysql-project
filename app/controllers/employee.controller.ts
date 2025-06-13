@@ -1,38 +1,36 @@
 import { NextFunction, Request, Response } from "express";
+import { Op, ValidationError } from "sequelize";
 import employeeModel from "../models/employee.model";
-import { employeeCreateSchema } from "../validations/employee.validation";
+import customerModel from "../models/customer.model";
+import employeeValidation from "../validations/employee.validation";
 import { resCode } from "../constants/resCode";
 import { responseHandler } from "../services/responseHandler.service";
-import { Op, ValidationError } from "sequelize";
-import customerModel from "../models/customer.model";
 import { msg } from "../constants/language/en.constant";
+import commonQuery from "../services/commonQuery.service";
 
+// 🔸 Initialize queries
+const employeeQuery = commonQuery(employeeModel);
+const customerQuery = commonQuery(customerModel);
+
+/* ============================================================================
+ * ➕ Create a New Employee
+ * ============================================================================
+ */
 const createEmployee = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const parsed = await employeeCreateSchema.safeParseAsync(req.body);
+    const parsed = await employeeValidation.employeeCreateSchema.safeParseAsync(
+      req.body
+    );
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
     }
 
-    const { emp_email, emp_mobile_number, cus_id } = parsed.data;
-
-    // 🔎 Check if customer exists
-    const customerExists = await customerModel.findByPk(cus_id);
-    if (!customerExists) {
-      return responseHandler.error(
-        res,
-        msg.employee.notFound,
-        resCode.BAD_REQUEST
-      );
-    }
-
-    // ✅ Create employee
-    const newEmployee = await employeeModel.create(parsed.data);
+    const newEmployee = await employeeQuery.create(parsed.data);
 
     return responseHandler.success(
       res,
@@ -41,22 +39,35 @@ const createEmployee = async (
       resCode.CREATED
     );
   } catch (error: any) {
+    if (error instanceof ValidationError) {
+      const messages = error.errors.map((err) => err.message);
+      return responseHandler.error(
+        res,
+        messages.join(", "),
+        resCode.BAD_REQUEST
+      );
+    }
+
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 📥 Get All Employees with Associated Customers
+ * ============================================================================
+ */
 const getAllEmployees = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const employees = await employeeModel.findAll({
+    const employees = await employeeQuery.getAll({
       include: [
         {
           model: customerModel,
-          as: "customer", // 👈 this must match your association alias
-          attributes: ["cus_id", "cus_firstname", "cus_lastname", "cus_email"], // customize as needed
+          as: "customer",
+          attributes: ["cus_id", "cus_firstname", "cus_lastname", "cus_email"],
         },
       ],
     });
@@ -81,6 +92,10 @@ const getAllEmployees = async (
   }
 };
 
+/* ============================================================================
+ * 🗑️ Delete Employee by ID
+ * ============================================================================
+ */
 const deleteEmployeeById = async (
   req: Request,
   res: Response,
@@ -89,9 +104,7 @@ const deleteEmployeeById = async (
   try {
     const { id } = req.params;
 
-    // 🔎 Check if employee exists
-    const employee = await employeeModel.findByPk(id);
-
+    const employee = await employeeQuery.getById(id);
     if (!employee) {
       return responseHandler.error(
         res,
@@ -100,7 +113,6 @@ const deleteEmployeeById = async (
       );
     }
 
-    // 🗑️ Delete employee
     await employee.destroy();
 
     return responseHandler.success(
@@ -114,6 +126,10 @@ const deleteEmployeeById = async (
   }
 };
 
+/* ============================================================================
+ * 🔁 Update Employee by ID
+ * ============================================================================
+ */
 const updateEmployeeById = async (
   req: Request,
   res: Response,
@@ -122,15 +138,21 @@ const updateEmployeeById = async (
   try {
     const { id } = req.params;
 
-    // ✅ Validate request body
-    const parsed = await employeeCreateSchema.safeParseAsync(req.body);
+    // Validate request body with Zod
+    const parsed = await employeeValidation.employeeUpdateSchema.safeParseAsync(
+      req.body
+    );
     if (!parsed.success) {
-      const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
+      const errorMsg = parsed.error.errors.map((e) => e.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
     }
 
-    // 🔎 Check if employee exists
-    const employee = await employeeModel.findByPk(id);
+    const data = parsed.data;
+
+    // Check if employee exists
+    const employee = await employeeQuery.deleteById({
+      where: { emp_id: Number(id) },
+    });
     if (!employee) {
       return responseHandler.error(
         res,
@@ -139,49 +161,54 @@ const updateEmployeeById = async (
       );
     }
 
-    const { emp_email, emp_mobile_number, cus_id } = parsed.data;
+    // Check for duplicate email
+    if (data.emp_email) {
+      const emailExists = await employeeQuery.getOne({
+        where: {
+          emp_email: data.emp_email,
+          emp_id: { [Op.ne]: Number(id) },
+        },
+      });
+      if (emailExists) {
+        return responseHandler.error(
+          res,
+          msg.employee.emailAlreadyExists,
+          resCode.BAD_REQUEST
+        );
+      }
+    }
 
-    // 🔎 Check for duplicate email (if changed)
-    const existingEmail = await employeeModel.findOne({
-      where: { emp_email, emp_id: { [Op.ne]: id } },
+    // Check for duplicate mobile number
+    if (data.emp_mobile_number) {
+      const phoneExists = await employeeQuery.getOne({
+        where: {
+          emp_mobile_number: data.emp_mobile_number,
+          emp_id: { [Op.ne]: Number(id) },
+        },
+      });
+      if (phoneExists) {
+        return responseHandler.error(
+          res,
+          msg.employee.phoneAlreadyExists,
+          resCode.BAD_REQUEST
+        );
+      }
+    }
+
+    // Perform the update
+    await employeeModel.update(data, {
+      where: { emp_id: Number(id) },
     });
-    if (existingEmail) {
-      return responseHandler.error(
-        res,
-        msg.employee.emailAlreadyExists,
-        resCode.BAD_REQUEST
-      );
-    }
 
-    // 🔎 Check for duplicate phone (if changed)
-    const existingPhone = await employeeModel.findOne({
-      where: { emp_mobile_number, emp_id: { [Op.ne]: id } },
+    // Fetch updated employee record
+    const updatedEmployee = await employeeQuery.getOne({
+      where: { emp_id: Number(id) },
     });
-    if (existingPhone) {
-      return responseHandler.error(
-        res,
-        msg.employee.phoneAlreadyExists,
-        resCode.BAD_REQUEST
-      );
-    }
-
-    // 🔎 Verify customer ID exists
-    const customer = await customerModel.findByPk(cus_id);
-    if (!customer) {
-      return responseHandler.error(
-        res,
-        msg.customer.idNotFound,
-        resCode.BAD_REQUEST
-      );
-    }
-
-    // ✅ Perform update
-    await employee.update(parsed.data);
 
     return responseHandler.success(
       res,
       msg.employee.updateSuccess,
-      employee,
+      updatedEmployee,
       resCode.OK
     );
   } catch (error) {
@@ -189,6 +216,10 @@ const updateEmployeeById = async (
   }
 };
 
+/* ============================================================================
+ * 📦 Export Employee Controller
+ * ============================================================================
+ */
 export default {
   getAllEmployees,
   createEmployee,

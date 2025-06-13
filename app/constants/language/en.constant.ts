@@ -32,7 +32,7 @@ export const msg = {
     deleteSuccess: "Customer removed successfully.",
     deleteFailed: "Failed to remove customer.",
     notFound: "Customer not found.",
-    idNotFound: "No customer found with the provided ID.",
+    notFoundById: "No customer found with the provided ID.",
     emailAlreadyExists: "A customer with this email already exists.",
   },
 
@@ -44,9 +44,6 @@ export const msg = {
     emailNotFound: "No account associated with this email.",
     accountInactive: "Account is currently inactive.",
     invalidPassword: "Incorrect password.",
-    otpSent: "A reset link and OTP have been sent to your email.",
-    otpExpired: "The OTP or link has expired.",
-    invalidOTP: "The provided OTP is incorrect.",
     passwordMismatch: "Passwords must match.",
     emailRequired: "Email is required.",
     usernameRequired: "Username is required.",
@@ -58,27 +55,36 @@ export const msg = {
   },
 
   employee: {
+    // ✅ Success Messages
     createSuccess: "Employee created successfully.",
     fetchSuccess: "Employee details fetched successfully.",
     updateSuccess: "Employee record updated.",
     deleteSuccess: "Employee record deleted.",
+
+    // ❌ Not Found / Existence Errors
     notFound: "Employee not found.",
+    notFoundById: "No employee found with the provided ID.",
     emailAlreadyExists: "An employee with this email already exists.",
     phoneAlreadyExists: "An employee with this phone number already exists.",
-    invalidEmail: "Invalid employee email format.",
-    missingFields: "Please fill in all required employee fields.",
+
+    // ⚠️ Validation Errors (Optional but recommended)
+    invalidEmail: "Invalid email format.",
+    invalidPhone: "Invalid phone number format.",
+    missingFields: "Required employee fields are missing.",
+    invalidId: "Invalid employee ID provided.",
   },
 
   job: {
+    // ✅ Success Messages
     createSuccess: "Job posted successfully.",
     fetchSuccess: "Job details fetched successfully.",
     updateSuccess: "Job details updated.",
     deleteSuccess: "Job deleted successfully.",
+
+    // ❌ Error Messages
     notFound: "Job not found.",
+    notFoundById: "Job not found with the given ID.", // (Optional, for clarity)
     skuExists: "A job with this SKU already exists.",
-    invalidName: "Job name must be between 2 to 50 characters.",
-
-
   },
   employeeJob: {
     assignSuccess: "Job assigned to employee(s) successfully.",

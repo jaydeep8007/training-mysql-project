@@ -1,12 +1,21 @@
 import { Request, Response, NextFunction } from "express";
+import { ValidationError } from "sequelize";
+
 import jobModel from "../models/job.model";
 import { jobCreateSchema } from "../validations/job.validation";
-import { ValidationError } from "sequelize";
-import { resCode } from "../constants/resCode";
-import { responseHandler } from "../services/responseHandler.service";
-import { msg } from "../constants/language/en.constant";
 
-// Create a new job
+import { resCode } from "../constants/resCode";
+import { msg } from "../constants/language/en.constant";
+import { responseHandler } from "../services/responseHandler.service";
+import commonQuery from "../services/commonQuery.service";
+
+// 🔸 Initialize job-specific query handler
+const jobQuery = commonQuery(jobModel);
+
+/* ============================================================================
+ * ➕ Create a New Job
+ * ============================================================================
+ */
 const createJob = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = await jobCreateSchema.safeParseAsync(req.body);
@@ -16,7 +25,7 @@ const createJob = async (req: Request, res: Response, next: NextFunction) => {
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
     }
 
-    const newJob = await jobModel.create(parsed.data);
+    const newJob = await jobQuery.create(parsed.data);
 
     return responseHandler.success(
       res,
@@ -25,44 +34,44 @@ const createJob = async (req: Request, res: Response, next: NextFunction) => {
       resCode.CREATED
     );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
 
-    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
 
-// Get all jobs
+/* ============================================================================
+ * 📥 Get All Jobs
+ * ============================================================================
+ */
 const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const jobs = await jobModel.findAll();
+    const jobs = await jobQuery.getAll();
 
-    return responseHandler.success(res, msg.job.fetchSuccess, jobs, resCode.OK);
+    return responseHandler.success(
+      res,
+      msg.job.fetchSuccess,
+      jobs,
+      resCode.OK
+    );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
 
-    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 📦 Export Job Controller
+ * ============================================================================
+ */
 export default {
-  getAllJobs,
   createJob,
+  getAllJobs,
 };

@@ -64,21 +64,11 @@ customerModel.init(
     cus_email: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: {
-        name: "unique_cus_email",
-        msg: "This Email Already Exists.",
-      },
-      
     },
 
     cus_phone_number: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: {
-        name: "unique_cus_phone_number",
-        msg: "Phone number already exists",
-      },
-      
     },
     cus_password: {
       type: DataTypes.STRING,
@@ -100,6 +90,18 @@ customerModel.init(
     sequelize,
     tableName: "customer",
     timestamps: true,
+    indexes: [
+      {
+        name: "unique_cus_email",
+        unique: true,
+        fields: ["cus_email"],
+      },
+      {
+        name: "unique_cus_phone_number",
+        unique: true,
+        fields: ["cus_phone_number"],
+      },
+    ],
   }
 );
 

@@ -13,7 +13,7 @@ const customerAuthModel = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "customer", // the table name, not the model file name
+        model: "customer",
         key: "cus_id",
       },
       onUpdate: "CASCADE",
@@ -21,16 +21,25 @@ const customerAuthModel = sequelize.define(
     },
     cus_auth_token: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // can be null or empty
+      defaultValue: "", // default to empty string if not provided
     },
-    cus_refresh_auth_token: {
+    cus_auth_refresh_token: {
       type: DataTypes.STRING,
-      unique: true,
+      allowNull: true,
+   
     },
   },
   {
     timestamps: true,
     collate: "utf8_general_ci",
+    indexes: [
+      {
+        name: "unique_refresh_token",
+        unique: true,
+        fields: ["cus_auth_refresh_token"],
+      },
+    ],
   }
 );
 

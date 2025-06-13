@@ -77,3 +77,25 @@ Fast lookups, general use	        utf8_general_ci
 Accurate multilingual comparisons	utf8_unicode_ci or utf8mb4_unicode_ci
 Emoji or full Unicode support	    utf8mb4_unicode_ci
 Case-sensitive usernames,passwords	utf8mb4_bin
+
+
+query for fetch customer with its employee 
+...........................................
+SELECT 
+  `customer`.`cus_id`, 
+  `customer`.`cus_name`, 
+  `customer`.`cus_email`,
+  `customer`.`cus_mobile_number`, 
+  -- all other customer columns...
+
+  `employee`.`emp_id`, 
+  `employee`.`emp_name`, 
+  `employee`.`emp_email`, 
+  `employee`.`emp_mobile_number`
+
+FROM `customer`
+
+LEFT OUTER JOIN `employee` AS `employee`
+  ON `customer`.`cus_id` = `employee`.`cus_id`
+
+WHERE `customer`.`cus_id` = <req.params.id>;

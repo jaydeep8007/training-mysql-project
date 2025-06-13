@@ -1,22 +1,33 @@
 import { NextFunction, Request, Response } from "express";
-import employeeJob from "../models/employeeJobAssign.model";
+import { ValidationError } from "sequelize";
+
+import employeeJobModel from "../models/employeeJobAssign.model";
+import jobModel from "../models/job.model";
+import employeeModel from "../models/employee.model";
 import employeeJobValidation from "../validations/employeeJob.validation";
+
+import commonQuery from "../services/commonQuery.service";
 import { responseHandler } from "../services/responseHandler.service";
 import { resCode } from "../constants/resCode";
-import { ValidationError } from "sequelize";
-import job from "../models/job.model";
-import employeeModel from "../models/employee.model";
 import { msg } from "../constants/language/en.constant";
 
+// 🔸 Initialize query handlers
+const jobQuery = commonQuery(jobModel);
+const employeeQuery = commonQuery(employeeModel);
+const employeeJobQuery = commonQuery(employeeJobModel);
 
+/* ============================================================================
+ * 📄 Assign Job to Single Employee
+ * ============================================================================
+ */
 const assignJobToEmployee = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // ✅ Validate with Zod
-    const parsed = employeeJobValidation.assignJobSchema.safeParse(req.body);
+    // ✅ Validate request body with Zod
+    const parsed = await employeeJobValidation.assignJobSchema.safeParseAsync(req.body);
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
@@ -24,8 +35,41 @@ const assignJobToEmployee = async (
 
     const { emp_id, job_id } = parsed.data;
 
-    // ✅ Create assignment
-    const assignment = await employeeJob.create(parsed.data);
+    // 🔎 Check if job exists
+    const jobExists = await jobQuery.getById(job_id);
+    if (!jobExists) {
+      return responseHandler.error(
+        res,
+        `Job with ID ${job_id} does not exist`,
+        resCode.NOT_FOUND
+      );
+    }
+
+    // 🔎 Check if employee exists
+    const employeeExists = await employeeQuery.getById(emp_id);
+    if (!employeeExists) {
+      return responseHandler.error(
+        res,
+        `Employee with ID ${emp_id} does not exist`,
+        resCode.NOT_FOUND
+      );
+    }
+
+    // 🔎 Check if the employee is already assigned to a job
+    const alreadyAssigned = await employeeJobQuery.getOne({
+      where: { emp_id },
+    });
+
+    if (alreadyAssigned) {
+      return responseHandler.error(
+        res,
+        `Employee with ID ${emp_id} is already assigned to a job`,
+        resCode.BAD_REQUEST
+      );
+    }
+
+    // ✅ Create job assignment
+    const assignment = await employeeJobQuery.create({ emp_id, job_id });
 
     return responseHandler.success(
       res,
@@ -34,7 +78,7 @@ const assignJobToEmployee = async (
       resCode.CREATED
     );
   } catch (error) {
-    // ✅ Sequelize validation error
+    // ⚠️ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, messages, resCode.BAD_REQUEST);
@@ -44,16 +88,22 @@ const assignJobToEmployee = async (
     return next(error);
   }
 };
+
+/* ============================================================================
+ * 📄 Assign Job to Many Employees
+ * ============================================================================
+ */
 const assignJobToManyEmployees = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // ✅ Zod validation first
-    const parsed = await employeeJobValidation.assignMultipleJobsSchema.safeParseAsync(
-      req.body
-    );
+    // ✅ Validate request body with Zod
+    const parsed =
+      await employeeJobValidation.assignMultipleJobsSchema.safeParseAsync(
+        req.body
+      );
     if (!parsed.success) {
       const errorMsg = parsed.error.errors.map((err) => err.message).join(", ");
       return responseHandler.error(res, errorMsg, resCode.BAD_REQUEST);
@@ -61,8 +111,8 @@ const assignJobToManyEmployees = async (
 
     const { emp_ids, job_id } = parsed.data;
 
-    // ✅ Check if job exists
-    const jobExists = await job.findByPk(job_id);
+    // 🔎 Check if job exists
+    const jobExists = await jobQuery.getById(job_id);
     if (!jobExists) {
       return responseHandler.error(
         res,
@@ -71,12 +121,12 @@ const assignJobToManyEmployees = async (
       );
     }
 
-    // ✅ Check if all employee IDs exist
-    const foundEmployees = await employeeModel.findAll({
+    // 🔎 Fetch and verify employees
+    const foundEmployees = await employeeQuery.getAll({
       where: { emp_id: emp_ids },
     });
 
-    const foundEmpIds = foundEmployees.map((emp) => emp.get("emp_id"));
+    const foundEmpIds = foundEmployees.map((emp: any) => emp.get("emp_id"));
     const missingEmpIds = emp_ids.filter((id) => !foundEmpIds.includes(id));
 
     if (missingEmpIds.length > 0) {
@@ -87,8 +137,8 @@ const assignJobToManyEmployees = async (
       );
     }
 
-    // ✅ Check if any of these employees already have a job assigned
-    const existingAssignments = await employeeJob.findAll({
+    // 🔎 Check for already assigned employees
+    const existingAssignments = await employeeJobModel.findAll({ 
       where: { emp_id: emp_ids },
     });
 
@@ -105,9 +155,9 @@ const assignJobToManyEmployees = async (
       );
     }
 
-    // ✅ All checks passed — assign job
+    // ✅ Assign job to all employees
     const assignments = await Promise.all(
-      emp_ids.map((emp_id) => employeeJob.create({ emp_id, job_id }))
+      emp_ids.map((emp_id) => employeeJobQuery.create({ emp_id, job_id }))
     );
 
     return responseHandler.success(
@@ -117,6 +167,7 @@ const assignJobToManyEmployees = async (
       resCode.CREATED
     );
   } catch (error) {
+    // ⚠️ Handle validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -126,9 +177,15 @@ const assignJobToManyEmployees = async (
       );
     }
 
+    // 🔁 Forward unhandled errors
     return next(error);
   }
 };
+
+/* ============================================================================
+ * 📦 Export Controller
+ * ============================================================================
+ */
 export default {
   assignJobToEmployee,
   assignJobToManyEmployees,

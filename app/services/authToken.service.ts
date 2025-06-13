@@ -2,8 +2,8 @@ import { Request, RequestHandler } from "express";
 import jwt , { JwtPayload }  from "jsonwebtoken";
 import { get } from "../config/config";
 
-
 const config = get(process.env.NODE_ENV);
+
 
 // Define an interface for the authenticated request
 // This interface extends the Request object to include a user property

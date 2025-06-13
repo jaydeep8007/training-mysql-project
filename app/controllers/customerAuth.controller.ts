@@ -8,17 +8,24 @@ import { resCode } from "../constants/resCode";
 import { ValidationError } from "sequelize";
 import { customerValidations } from "../validations/customer.validation";
 import { msg } from "../constants/language/en.constant";
+import commonQuery from "../services/commonQuery.service";
 
+// 🔸 Initialize query service
+const customerQuery = commonQuery(customerModel);
+const customerAuthQuery = commonQuery(customerAuthModel);
+
+/* ============================================================================
+ * ✅ Signup Customer
+ * ============================================================================
+ */
 const signupCustomer = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // ✅ Zod validation
     const parsed =
       await customerValidations.customerCreateSchema.safeParseAsync(req.body);
-
     if (!parsed.success) {
       const errors = parsed.error.errors.map(
         (err) => `${err.path[0] || "field"}: ${err.message}`
@@ -34,22 +41,19 @@ const signupCustomer = async (
       cus_password,
     } = parsed.data;
 
-    // ✅ Hash password
     const hashedPassword = await hashPassword(cus_password);
 
-    // ✅ Create new customer (exclude confirm_password)
-    const newCustomer = await customerModel.create({
+    const newCustomer = await customerQuery.create({
       cus_firstname,
       cus_lastname,
       cus_email,
       cus_phone_number,
       cus_password: hashedPassword,
-      cus_status: "active", // or use a constant if defined
+      cus_status: "active",
     });
 
     const customerData = newCustomer.get();
 
-    // ✅ Generate auth tokens
     const token = authToken.generateAuthToken({
       user_id: customerData.cus_id,
       email: customerData.cus_email,
@@ -60,25 +64,19 @@ const signupCustomer = async (
       email: customerData.cus_email,
     });
 
-    // ✅ Store tokens in auth table
-    await customerAuthModel.create({
+    await customerAuthQuery.create({
       cus_id: customerData.cus_id,
       cus_auth_token: token,
-      cus_refresh_auth_token: refreshToken,
+      cus_auth_refresh_token: refreshToken,
     });
 
     return responseHandler.success(
       res,
       msg.auth.registerSuccess,
-      {
-        customer: customerData,
-        token,
-        refreshToken,
-      },
+      { customer: customerData, token, refreshToken },
       resCode.CREATED
     );
   } catch (error) {
-    // Sequelize validation fallback
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -87,23 +85,23 @@ const signupCustomer = async (
         resCode.BAD_REQUEST
       );
     }
-
-    // Unexpected error
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 🔐 Signin Customer
+ * ============================================================================
+ */
 const signinCustomer = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    // ✅ Validate input with Zod
     const parsed = await customerValidations.customerLoginSchema.safeParseAsync(
       req.body
     );
-
     if (!parsed.success) {
       const errors = parsed.error.errors.map(
         (err) => `${err.path[0]}: ${err.message}`
@@ -113,9 +111,7 @@ const signinCustomer = async (
 
     const { cus_email, cus_password } = parsed.data;
 
-    // Find customer by email
-    const customer = await customerModel.findOne({ where: { cus_email } });
-
+    const customer = await customerQuery.getOne({ where: { cus_email } });
     if (!customer) {
       return responseHandler.error(
         res,
@@ -125,14 +121,11 @@ const signinCustomer = async (
     }
 
     const customerData = customer.get();
-    console.log("Customer data:", customerData);
 
-    // Compare passwords
     const isValid = await comparePasswords(
       cus_password,
       customerData.cus_password
     );
-
     if (!isValid) {
       return responseHandler.error(
         res,
@@ -141,7 +134,6 @@ const signinCustomer = async (
       );
     }
 
-    // Generate tokens
     const token = authToken.generateAuthToken({
       user_id: customerData.cus_id,
       email: customerData.cus_email,
@@ -152,25 +144,19 @@ const signinCustomer = async (
       email: customerData.cus_email,
     });
 
-    // Save auth tokens in customer_auth table
-    await customerAuthModel.create({
+    await customerAuthQuery.create({
       cus_id: customerData.cus_id,
       cus_auth_token: token,
-      cus_refresh_auth_token: refreshToken,
+      cus_auth_refresh_token: refreshToken,
     });
 
     return responseHandler.success(
       res,
       msg.auth.loginSuccess,
-      {
-        token,
-        refreshToken,
-        customer: {},
-      },
+      { token, refreshToken, customer: {} },
       resCode.OK
     );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
       return responseHandler.error(
@@ -179,12 +165,14 @@ const signinCustomer = async (
         resCode.BAD_REQUEST
       );
     }
-
-    // For other unhandled errors
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 📧 Forgot Password - Request Reset Token
+ * ============================================================================
+ */
 const forgotPassword = async (
   req: Request,
   res: Response,
@@ -196,169 +184,107 @@ const forgotPassword = async (
       const errors = result.error.errors.map((e) => e.message).join(", ");
       return responseHandler.error(res, errors, resCode.BAD_REQUEST);
     }
+
     const { cus_email } = result.data;
 
-    if (!cus_email) {
-      return responseHandler.error(
-        res,
-        msg.auth.emailRequired,
-        resCode.BAD_REQUEST
-      );
-    }
-
-    // ✅ Find customer by email
-    const customer = await customerModel.findOne({ where: { cus_email } });
-
+    const customer = await customerQuery.getOne({ where: { cus_email } });
     if (!customer) {
-      return responseHandler.error(
-        res,
-        msg.customer.notFound,
-        resCode.NOT_FOUND
-      );
+      return responseHandler.error(res, msg.customer.notFound, resCode.NOT_FOUND);
     }
 
-    // ✅ Generate refresh token (reset token)
-    const resetToken = authToken.generateRefreshAuthToken({
+    const cus_auth_refresh_token = authToken.generateRefreshAuthToken({
       user_id: customer.cus_id,
       email: customer.cus_email,
     });
 
-    // ✅ Update or create entry in customerAuthModel
     const [authEntry, created] = await customerAuthModel.findOrCreate({
       where: { cus_id: customer.cus_id },
       defaults: {
-        cus_auth_token: "", // keep empty or use real access token if needed
-        cus_refresh_auth_token: resetToken,
+        cus_auth_token: "", // can leave empty or null
+        cus_auth_refresh_token,
       },
     });
 
     if (!created) {
-      // Entry exists, update refresh token
-      authEntry.set("cus_refresh_auth_token", resetToken);
+      authEntry.set("cus_auth_refresh_token", cus_auth_refresh_token);
       await authEntry.save();
     }
 
-    // ✅ Success response
     return responseHandler.success(
       res,
       msg.auth.resetTokenSent,
-      { reset_token: resetToken },
+      { cus_auth_refresh_token }, // ✅ return with proper key
       resCode.OK
     );
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
-
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 🔒 Reset Password using Token
+ * ============================================================================
+ */
 const resetPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const result = customerValidations.resetPasswordSchema.safeParse(req.body);
+    const result =await  customerValidations.resetPasswordSchema.safeParseAsync(req.body);
     if (!result.success) {
       const errors = result.error.errors.map((e) => e.message).join(", ");
       return responseHandler.error(res, errors, resCode.BAD_REQUEST);
     }
-    const { reset_token, new_password, confirm_password } = result.data;
 
-    if (!reset_token || !new_password || !confirm_password) {
-      return responseHandler.error(
-        res,
-        msg.common.requiredAllFields,
-        resCode.BAD_REQUEST
-      );
+    const { cus_auth_refresh_token, new_password, confirm_password } = result.data;
+
+    if (!cus_auth_refresh_token || !new_password || !confirm_password) {
+      return responseHandler.error(res, msg.common.requiredAllFields, resCode.BAD_REQUEST);
     }
 
-    // Find auth entry by token
-    const authEntry = await customerAuthModel.findOne({
-      where: { cus_refresh_auth_token: reset_token },
+    const authEntry = await customerAuthQuery.getOne({
+      where: { cus_auth_refresh_token },
+      include: [{ model: customerModel, as: "customer" }],
     });
 
-    if (!authEntry) {
-      return responseHandler.error(
-        res,
-        msg.auth.invalidResetToken,
-        resCode.UNAUTHORIZED
-      );
+    if (!authEntry || !authEntry.get("customer")) {
+      return responseHandler.error(res, msg.auth.invalidResetToken, resCode.UNAUTHORIZED);
     }
 
-    const testCust = await customerAuthModel.findOne({
-      where: { cus_refresh_auth_token: reset_token }, // or any matching condition
-      include: [
-        {
-          model: customerModel,
-          as: "customer",
-        },
-      ],
-    });
+    const customerInstance = authEntry.get("customer") as typeof customerModel.prototype;
 
-    // console.log("Customer found:", testCust);
-
-    if (!testCust) {
-      return responseHandler.error(
-        res,
-        "Customer not found",
-        resCode.NOT_FOUND
-      );
-    }
-
-    // Hash the new password
     const hashedPassword = await hashPassword(new_password);
+    customerInstance.set("cus_password", hashedPassword);
+    customerInstance.set("reset_password_token", null);
+    await customerInstance.save();
 
-    // Update customer password
-    const customerInstance = testCust.get("customer");
-    if (!customerInstance) {
-      return responseHandler.error(
-        res,
-        "Customer not found",
-        resCode.NOT_FOUND
-      );
-    }
-    // Cast to customerModel type to access set/save methods
-    const customerModelInstance =
-      customerInstance as typeof customerModel.prototype;
-    customerModelInstance.set("cus_password", hashedPassword);
-    customerModelInstance.set("reset_password_token", null); // Clear reset token
-
-    await customerModelInstance.save();
-
-    // Clear the reset token
-    authEntry.set("cus_refresh_auth_token", "");
+    authEntry.set("cus_auth_refresh_token", ""); // Clear token after use
     await authEntry.save();
 
     return responseHandler.success(
       res,
-      "Password has been reset successfully",
+      msg.auth.resetPasswordSuccess,
       {},
       resCode.OK
     );
   } catch (error) {
-    // ✅ Handle Sequelize validation errors
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
-
-    // 🔁 Forward any other unhandled error to the global error handler
     return next(error);
   }
 };
 
+/* ============================================================================
+ * 📦 Export Auth Controller
+ * ============================================================================
+ */
 export default {
   signupCustomer,
   signinCustomer,
