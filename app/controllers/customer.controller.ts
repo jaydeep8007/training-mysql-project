@@ -70,43 +70,39 @@ const addCustomer = async (req: Request, res: Response, next: NextFunction) => {
  * 📄 Get All Customers
  * ============================================================================
  */
-// const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const customers = await customerQuery.getAll();
-
-//     return responseHandler.success(
-//       res,
-//       msg.customer.fetchSuccess,
-//       customers,
-//       resCode.OK
-//     );
-//   } catch (error) {
-//     if (error instanceof ValidationError) {
-//       const messages = error.errors.map((err) => err.message);
-//       return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
-//     }
-
-//     return next(error);
-//   }
-// };
-const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
+const getCustomers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = (page - 1) * limit;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.results_per_page as string, 10) || 10;
 
-    const customers = await customerQuery.getAll({ limit, offset });
-    const total = await customerModel.count();
+    const result = await customerQuery.getAll(
+      {},
+      {
+        page,
+        limit,
+        include: [
+          {
+            model: employeeModel,
+            as: "employee", // should match alias in customerModel association
+            required: false, // LEFT JOIN behavior
+          },
+        ],
+      }
+    );
 
     return responseHandler.success(
       res,
       msg.customer.fetchSuccess,
       {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-        data: customers,
+        totalDataCount: result.pagination.totalDataCount,
+        totalPages: result.pagination.totalPages,
+        page: result.pagination.page,
+        results_per_page: result.pagination.limit,
+        data: result.data,
       },
       resCode.OK
     );
@@ -119,6 +115,36 @@ const getCustomers = async (req: Request, res: Response, next: NextFunction) => 
     return next(error);
   }
 };
+// const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     const page = parseInt(req.query.page as string) || 1;
+//     const limit = parseInt(req.query.limit as string) || 10;
+//     const offset = (page - 1) * limit;
+
+//     const customers = await customerQuery.getAll({ limit, offset });
+//     const totalDataCount = await customerModel.count();
+
+//     return responseHandler.success(
+//       res,
+//       msg.customer.fetchSuccess,
+//       {
+//         totalDataCount,
+//         page,
+//         limit,
+//         totalPages: Math.ceil(totalDataCount / limit),//how many pages we need to show all data
+//         data: customers,
+//       },
+//       resCode.OK
+//     );
+//   } catch (error) {
+//     if (error instanceof ValidationError) {
+//       const messages = error.errors.map((err) => err.message);
+//       return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
+//     }
+
+//     return next(error);
+//   }
+// };
 
 
 /* ============================================================================

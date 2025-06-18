@@ -9,16 +9,51 @@ const commonQuery = (model: any) => {
         throw error;
       }
     },
+    
+// ✅ GET ALL records with pagination and optional associations
+async getAll(
+  filter: Record<string, any> = {},
+  options: Record<string, any> = {}
+) {
+  try {
+    const page = Number(options.page) > 0 ? Number(options.page) : 1;
+    const limit = Number(options.limit) > 0 ? Number(options.limit) : 10;
+    const offset = (page - 1) * limit;
 
-    // ✅ GET ALL records
-    async getAll(options: any = {}) {
-      try {
-        const items = await model.findAll(options);
-        return items;
-      } catch (error) {
-        throw error;
-      }
-    },
+    const queryOptions: any = {
+      where: filter,
+      limit,
+      offset,
+    };
+
+    // ✅ Optional include associations
+    if (options.include) {
+      queryOptions.include = options.include;
+    }
+
+    // ✅ Optional ordering
+    if (options.order) {
+      queryOptions.order = options.order;
+    }
+
+    const [data, totalDataCount] = await Promise.all([
+      model.findAll(queryOptions),
+      model.count({ where: filter }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        totalDataCount,
+        totalPages: Math.ceil(totalDataCount / limit),
+      },
+    };
+  } catch (error) {
+    throw error;
+  }
+},
 
     // ✅ GET ONE record by filter
     async getOne(filter: Record<string, any> = {}) {

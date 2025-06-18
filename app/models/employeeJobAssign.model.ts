@@ -27,7 +27,7 @@ const employeeJobModel = sequelize.define(
     },
   },
   {
-    tableName: "employee_job",
+    tableName: "employeeJob",
     timestamps: true,
   }
 );

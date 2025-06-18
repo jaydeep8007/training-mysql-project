@@ -126,7 +126,7 @@ const assignJobToManyEmployees = async (
       where: { emp_id: emp_ids },
     });
 
-    const foundEmpIds = foundEmployees.map((emp: any) => emp.get("emp_id"));
+    const foundEmpIds = foundEmployees.data.map((emp: any) => emp.get("emp_id"));
     const missingEmpIds = emp_ids.filter((id) => !foundEmpIds.includes(id));
 
     if (missingEmpIds.length > 0) {

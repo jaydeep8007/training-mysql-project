@@ -47,14 +47,30 @@ const createJob = async (req: Request, res: Response, next: NextFunction) => {
  * 📥 Get All Jobs
  * ============================================================================
  */
-const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
+
+// 📄 Get All Jobs with Pagination via commonQueryMongo
+
+const getAllJobs = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const jobs = await jobQuery.getAll();
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+
+    const result = await jobQuery.getAll({}, { page, limit });
 
     return responseHandler.success(
       res,
       msg.job.fetchSuccess,
-      jobs,
+      {
+        totalDataCount: result.pagination.totalDataCount,
+        totalPages: result.pagination.totalPages,
+        page: result.pagination.page,
+        results_per_page: result.pagination.limit,
+        jobs: result.data,
+      },
       resCode.OK
     );
   } catch (error) {
@@ -66,6 +82,8 @@ const getAllJobs = async (req: Request, res: Response, next: NextFunction) => {
     return next(error);
   }
 };
+
+
 
 /* ============================================================================
  * 📦 Export Job Controller

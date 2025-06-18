@@ -56,41 +56,80 @@ const createEmployee = async (
  * 📥 Get All Employees with Associated Customers
  * ============================================================================
  */
-const getAllEmployees = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+// const getAllEmployees = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const employees = await employeeQuery.getAll({
+//       include: [
+//         {
+//           model: customerModel,
+//           as: "customer",
+//           attributes: ["cus_id", "cus_firstname", "cus_lastname", "cus_email"],
+//         },
+//       ],
+//     });
+
+//     return responseHandler.success(
+//       res,
+//       msg.employee.fetchSuccess,
+//       employees,
+//       resCode.OK
+//     );
+//   } catch (error) {
+//     if (error instanceof ValidationError) {
+//       const messages = error.errors.map((err) => err.message);
+//       return responseHandler.error(
+//         res,
+//         messages.join(", "),
+//         resCode.BAD_REQUEST
+//       );
+//     }
+
+//     return next(error);
+//   }
+// };
+const getAllEmployees = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const employees = await employeeQuery.getAll({
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const { count: totalDataCount, rows: employees } = await employeeModel.findAndCountAll({
       include: [
         {
           model: customerModel,
           as: "customer",
-          attributes: ["cus_id", "cus_firstname", "cus_lastname", "cus_email"],
-        },
+          attributes: ["cus_id", "cus_firstname", "cus_lastname", "cus_email"]
+        }
       ],
+      limit,
+      offset,
     });
 
     return responseHandler.success(
       res,
       msg.employee.fetchSuccess,
-      employees,
+      {
+        totalDataCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalDataCount / limit), // how many pages needed
+        data: employees,
+      },
       resCode.OK
     );
   } catch (error) {
     if (error instanceof ValidationError) {
       const messages = error.errors.map((err) => err.message);
-      return responseHandler.error(
-        res,
-        messages.join(", "),
-        resCode.BAD_REQUEST
-      );
+      return responseHandler.error(res, messages.join(", "), resCode.BAD_REQUEST);
     }
-
     return next(error);
   }
 };
+
 
 /* ============================================================================
  * 🗑️ Delete Employee by ID
